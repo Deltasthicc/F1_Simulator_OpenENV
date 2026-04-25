@@ -25,6 +25,13 @@ Reward design (TRL mode):
 
 from __future__ import annotations
 
+# Import Unsloth early so its patches apply before trl/transformers/peft.
+try:
+    import unsloth
+except Exception:
+    pass
+
+
 import argparse
 import json
 from pathlib import Path
@@ -215,16 +222,23 @@ def _run_trl(args) -> None:
         logging_steps=args.logging_steps,
         save_steps=args.save_steps,
         learning_rate=args.learning_rate,
+
         # GRPO-specific
-        num_generations=4,          # completions per prompt for advantage estimation
+        num_generations=4,
         temperature=0.9,
-        max_new_tokens=96,
+        max_completion_length=96,
         max_prompt_length=1536,
-        # Stability
-        beta=0.01,                  # KL penalty coefficient
-        loss_type="grpo",
-        use_vllm=False,             # vLLM not required; remove if it causes issues
+
+        # Stability / vLLM
+        beta=0.01,
+        use_vllm=True,
+        vllm_mode="colocate",
+        vllm_gpu_memory_utilization=0.30,
+        bf16=True,
+        report_to="none",
     )
+
+    model = _patch_unsloth_mode_methods(model)
 
     trainer = GRPOTrainer(
         model=model,
@@ -233,12 +247,15 @@ def _run_trl(args) -> None:
         args=config,
         train_dataset=dataset,
     )
+
     print("Starting GRPO training …")
     trainer.train()
+
+    Path(args.output_dir).mkdir(parents=True, exist_ok=True)
     trainer.save_model(args.output_dir)
+
     print(f"Training complete. Checkpoint saved to {args.output_dir}")
 
-    # Write a policy_config.json so evaluate.py detects this as a real checkpoint
     (Path(args.output_dir) / "policy_config.json").write_text(
         json.dumps(
             {
@@ -248,9 +265,38 @@ def _run_trl(args) -> None:
                 "max_steps": args.max_steps,
             },
             indent=2,
-        ),
-        encoding="utf-8",
+        )
     )
+
+
+
+
+def _patch_unsloth_mode_methods(model):
+    """Compatibility patch only for fallback models missing Unsloth mode methods."""
+    import types
+
+    def _for_training(self, *args, **kwargs):
+        self.train()
+        return self
+
+    def _for_inference(self, *args, **kwargs):
+        self.eval()
+        return self
+
+    if not hasattr(model, "for_training"):
+        model.for_training = types.MethodType(_for_training, model)
+    if not hasattr(model, "for_inference"):
+        model.for_inference = types.MethodType(_for_inference, model)
+
+    for attr in ("base_model", "model"):
+        inner = getattr(model, attr, None)
+        if inner is not None:
+            if not hasattr(inner, "for_training"):
+                inner.for_training = types.MethodType(_for_training, inner)
+            if not hasattr(inner, "for_inference"):
+                inner.for_inference = types.MethodType(_for_inference, inner)
+
+    return model
 
 
 def _load_model_with_lora(model_name: str, args):
@@ -267,10 +313,12 @@ def _load_model_with_lora(model_name: str, args):
             model, tokenizer = FastLanguageModel.from_pretrained(
                 model_name=model_name,
                 max_seq_length=2048,
-                load_in_4bit=True,
-                fast_inference=False,
-                trust_remote_code=True,
-            )
+                load_in_4bit=False,
+                fast_inference=True,
+                trust_remote_code=False,
+                        max_lora_rank=16,
+            gpu_memory_utilization=0.30,
+        )
             model = FastLanguageModel.get_peft_model(
                 model,
                 r=16,
@@ -284,20 +332,24 @@ def _load_model_with_lora(model_name: str, args):
             print("Unsloth LoRA model loaded.")
             return model, tokenizer
         except Exception as exc:
+            if str(model_name).lower().startswith("unsloth/"):
+                raise RuntimeError(
+                    f"Unsloth failed to load {model_name}. Do not fallback when using Unsloth+vLLM. Original error: {exc}"
+                ) from exc
             print(f"Unsloth unavailable ({exc}); falling back to standard PEFT …")
 
     # Standard transformers + PEFT
     from transformers import AutoModelForCausalLM, AutoTokenizer
     from peft import LoraConfig, get_peft_model, TaskType
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=False)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
     dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        trust_remote_code=True,
+        trust_remote_code=False,
         torch_dtype=dtype,
         device_map="auto",
     )

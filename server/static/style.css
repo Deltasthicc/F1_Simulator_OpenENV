@@ -1,0 +1,218 @@
+/* F1 Strategist landing — line-drawing aesthetic.
+   No glow except on the advancing tip of each line. After the line completes, it's flat.
+   Monochrome. Type sets itself. */
+
+:root {
+  --bg: #0a0a0a;
+  --ink: #e8e8e8;
+  --dim: #6e6e6e;
+  --rule: #1f1f1f;
+  --accent: #d8d8d8;
+  --pulse: #ffffff;
+  --mono: 'JetBrains Mono', 'IBM Plex Mono', 'Menlo', 'Consolas', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  height: 100%;
+  overflow: hidden;
+}
+
+body { position: relative; }
+
+canvas#bg {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+}
+
+svg#stage {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+svg path, svg line, svg polyline {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+svg .opponent { stroke: var(--dim); stroke-width: 0.7; }
+svg .telemetry { stroke: var(--dim); stroke-width: 0.6; opacity: 0.6; }
+svg .pit-pulse { fill: var(--pulse); }
+
+.topbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 28px;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.brand { color: var(--ink); font-weight: 500; }
+.brand-tick { color: var(--accent); margin-right: 4px; }
+nav a {
+  color: var(--dim);
+  text-decoration: none;
+  margin-left: 22px;
+  transition: color 120ms;
+}
+nav a:hover { color: var(--ink); }
+
+.hud {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  display: grid;
+  grid-template-rows: 1fr auto auto;
+  grid-template-columns: 1fr 360px;
+  grid-template-areas:
+    "lede     timeline"
+    "readout  timeline"
+    "footer   footer";
+  padding: 80px 32px 24px;
+  gap: 16px;
+}
+
+.lede {
+  grid-area: lede;
+  align-self: end;
+  max-width: 580px;
+  pointer-events: auto;
+}
+.lede h1 {
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin-bottom: 14px;
+  white-space: pre-wrap;
+  min-height: 38px;
+}
+.lede h1::after {
+  content: "▍";
+  margin-left: 2px;
+  color: var(--accent);
+  animation: blink 900ms steps(1) infinite;
+}
+.lede h1.done::after { content: ""; animation: none; }
+.lede p {
+  color: var(--dim);
+  font-size: 13px;
+  line-height: 1.7;
+  max-width: 520px;
+  white-space: pre-wrap;
+  min-height: 22px;
+}
+
+@keyframes blink { 50% { opacity: 0; } }
+
+.timeline {
+  grid-area: timeline;
+  align-self: end;
+  border-left: 1px solid var(--rule);
+  padding: 16px 0 16px 18px;
+  pointer-events: auto;
+  max-height: 60vh;
+  overflow: hidden;
+}
+.timeline ol {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.timeline li {
+  font-size: 11.5px;
+  color: var(--dim);
+  letter-spacing: 0.02em;
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 10px;
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 220ms, transform 220ms, color 220ms;
+}
+.timeline li.in { opacity: 1; transform: translateX(0); }
+.timeline li.key { color: var(--ink); }
+.timeline li .lap {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.timeline li .cmd {
+  font-weight: 400;
+}
+
+.readout {
+  grid-area: readout;
+  align-self: end;
+  display: grid;
+  gap: 5px;
+  max-width: 380px;
+  padding: 12px 0 0 0;
+  border-top: 1px solid var(--rule);
+  pointer-events: auto;
+}
+.readout .row {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.readout .k { color: var(--dim); }
+.readout .v { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.footer {
+  grid-area: footer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10.5px;
+  color: var(--dim);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+  pointer-events: auto;
+}
+.footer .dot { padding: 0 10px; }
+
+@media (max-width: 760px) {
+  .hud {
+    grid-template-rows: auto auto auto auto;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "lede"
+      "readout"
+      "timeline"
+      "footer";
+    padding: 70px 18px 18px;
+  }
+  .timeline { max-height: 28vh; border-left: none; border-top: 1px solid var(--rule); padding: 14px 0 0; }
+  .lede h1 { font-size: 22px; }
+  .readout { max-width: none; }
+}

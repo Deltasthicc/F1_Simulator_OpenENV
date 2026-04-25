@@ -17,15 +17,23 @@ Updated after each phase gate. If anything kills the session, read this top-to-b
 - [x] Phase 1 — Install training stack
 - [x] Phase 2 — Re-verify env (164 tests + 6 scenarios)
 - [x] Phase 3 — Cloudflare tunnel for f1.chinnaboina.com (LIVE)
-- [ ] Phase 4 — Generate SFT seed data
-- [ ] Phase 5 — GRPO smoke run (50 steps, Qwen3-0.6B)
-- [ ] Phase 6 — Full GRPO (500 steps, Qwen3-4B) — runs ~4h
-- [ ] Phase 7 — Landing page + Gradio polish (parallel with 6)
-- [ ] Phase 8 — Push checkpoint to HF Hub [BLOCKED on HF_TOKEN]
-- [ ] Phase 9 — Eval against trained checkpoint
-- [ ] Phase 10 — Demo polish (GIFs, blog, video)
-- [ ] Phase 11 — Pre-push checklist + tag v1.0-finale
-- [ ] Phase 12 — Storytelling extras (historical replay, leaderboard)
+- [x] Phase 4 — Generate SFT seed data (2450 turns)
+- [⏸] Phase 5 — GRPO smoke run [PAUSED: GPU shared with friend; NaN issue at first generation needs --no-unsloth retry]
+- [⏸] Phase 6 — Full GRPO (500 steps, Qwen3-4B) [BLOCKED on Phase 5]
+- [x] Phase 7 — Landing page LIVE at https://f1.chinnaboina.com/ (CPU-only)
+- [x] Phase 8 — HF Space LIVE (Deltasthic/f1-strategist serves landing page); checkpoint push deferred until Phase 6
+- [⏸] Phase 9 — Eval against trained checkpoint [BLOCKED on Phase 6]
+- [~] Phase 10 — Demo polish (README updated with live URLs; numbers + new GIFs after Phase 9)
+- [~] Phase 11 — Pre-push hygiene done (secret scan ✅, no large files ✅, .env not tracked ✅, README links resolve ✅); final tag waits on training
+- [~] Phase 12 — Historical replay loader stubbed (`scripts/build_historical_replay.py`, `data/historical_replays/`); leaderboard not yet
+
+## Resume markers when GPU is free
+**SIGNAL:** `nvidia-smi --query-gpu=memory.free --format=csv,noheader` returns >25 GB.
+**RESUME AT:** Phase 5. First action: re-run smoke with `--no-unsloth` (Unsloth's patched generate triggers NaN on sm_120 — confirmed three identical CUDA asserts). Command:
+```
+tmux new -d -s smoke "source ~/.virtualenvs/f1-strategist/bin/activate && set -a && source .env && set +a && rm -rf grpo_smoke training_smoke.log && python train.py --backend trl --model Qwen/Qwen3-0.6B --task dry_strategy_sprint --max-steps 50 --batch-size 1 --grad-accum 8 --logging-steps 5 --save-steps 25 --no-unsloth --output-dir ./grpo_smoke 2>&1 | tee training_smoke.log"
+```
+If that also NaNs: lower `--temperature` 0.9→0.5 in train.py, or switch to Qwen3-1.7B (has real pad token, not the placeholder Qwen3-0.6B uses).
 
 ## Phase log
 

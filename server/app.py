@@ -16,11 +16,17 @@ no-op so the factory lambda safely returns the same instance on every call.
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
+from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from openenv.core.env_server import create_app
 
 from models import F1Action, F1Observation
 from server.environment import F1StrategistEnvironment
+
+_STATIC_DIR = Path(__file__).parent / "static"
 
 # ---------------------------------------------------------------------------
 # Shared environment singleton
@@ -46,6 +52,25 @@ app = create_app(
     F1Observation,
     env_name="F1 Strategist",
 )
+
+# Mount static assets and the line-drawing landing page at GET /
+# openenv's create_app may register a "/" redirect to /web — strip it first
+# so our landing page is what visitors see at the root URL. /web (Gradio
+# panel) and /reset /step /health are unaffected.
+if _STATIC_DIR.exists():
+    # Remove any existing route at "/" that openenv may have added
+    app.router.routes = [
+        r for r in app.router.routes
+        if not (getattr(r, "path", None) == "/" and "GET" in getattr(r, "methods", set()) | {"GET"})
+    ]
+    app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
+
+    @app.get("/", include_in_schema=False)
+    def _landing():
+        index = _STATIC_DIR / "index.html"
+        if index.exists():
+            return FileResponse(str(index), media_type="text/html")
+        return {"status": "ok", "name": "F1 Strategist", "see": "/web"}
 
 # Optional: also mount our richer custom Gradio demo panel at /demo
 if os.environ.get("ENABLE_WEB_INTERFACE") == "1":

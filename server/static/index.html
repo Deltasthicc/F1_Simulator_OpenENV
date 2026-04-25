@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>F1 Strategist</title>
+<meta name="description" content="OpenEnv environment for training LLM Formula 1 race strategists. Theme #2 — long-horizon planning. Meta PyTorch OpenEnv Hackathon Grand Finale 2026.">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<canvas id="bg"></canvas>
+
+<svg id="stage" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+  <defs>
+    <filter id="tipGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="pulse" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3"/>
+    </filter>
+  </defs>
+
+  <g id="origin"></g>
+  <g id="track-lines"></g>
+  <g id="opponent-lines"></g>
+  <g id="telemetry"></g>
+  <g id="decision-pulse"></g>
+</svg>
+
+<header class="topbar">
+  <span class="brand"><span class="brand-tick">▍</span> F1 STRATEGIST</span>
+  <nav>
+    <a href="/web">interactive</a>
+    <a href="/health">api</a>
+    <a href="https://huggingface.co/spaces/Deltasthic/f1-strategist" target="_blank" rel="noreferrer">space</a>
+    <a href="https://github.com/Deltasthicc/F1_Simulator_OpenENV" target="_blank" rel="noreferrer">github</a>
+  </nav>
+</header>
+
+<main class="hud">
+  <section class="lede">
+    <h1 id="title-text"></h1>
+    <p id="subtitle"></p>
+  </section>
+
+  <section class="timeline" aria-label="Race decision timeline">
+    <ol id="decisions"></ol>
+  </section>
+
+  <section class="readout">
+    <div class="row"><span class="k">env</span><span class="v">openenv-core 0.2.3</span></div>
+    <div class="row"><span class="k">policy</span><span class="v" id="policy-readout">Qwen3-4B + GRPO</span></div>
+    <div class="row"><span class="k">scenario</span><span class="v" id="scenario-readout">weather_roulette · Spa · 12 laps</span></div>
+    <div class="row"><span class="k">score</span><span class="v" id="score-readout">—</span></div>
+  </section>
+
+  <footer class="footer">
+    <span>Meta PyTorch OpenEnv Hackathon · Grand Finale · Bangalore 2026</span>
+    <span class="dot">·</span>
+    <span>Shashwat Rajan · Tanish Shitanshu</span>
+  </footer>
+</main>
+
+<script src="/static/app.js" defer></script>
+</body>
+</html>

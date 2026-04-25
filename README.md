@@ -23,6 +23,11 @@ tags:
 
 **OpenEnv environment for training LLM agents as Formula 1 race strategists.**
 
+> **Try it live:**
+> [`f1.chinnaboina.com`](https://f1.chinnaboina.com/) — landing page + interactive panel
+> · [`Hugging Face Space`](https://huggingface.co/spaces/Deltasthic/f1-strategist) — same env on HF infra
+> · [`GitHub`](https://github.com/Deltasthicc/F1_Simulator_OpenENV) — source
+
 It is lap 8 of 12 at Spa. Light rain has started. Verstappen ahead of you just stayed out on slicks. Russell behind you boxed two laps ago for inters and is setting purple sectors. Your tyres have 4 laps of grip left. Your pit window closes in 3. The board on the pit wall is asking what to call. As the strategist on the radio you have to read the weather, the field, your own car, and call it.
 
 F1 Strategist simulates that world. It is an OpenEnv environment designed for RL post-training of LLM agents on long-horizon, partially-observable race-strategy decisions with hard rule constraints and verifiable rewards. The model does not drive the car — a built-in physics simulator handles laps, tyres, fuel, and opponents. The model is the race engineer making strategic calls.

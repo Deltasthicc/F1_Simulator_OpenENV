@@ -1,4 +1,21 @@
-"""Deterministic six-dimension scorer for F1 strategist episodes."""
+"""Deterministic six-dimension scorer for F1 strategist episodes.
+
+Hardened version (audit fix v2):
+    - compute_strategic_decisions enforces *family-correct* preconditions
+      (REQUEST_FORECAST for weather, ASSESS_UNDERCUT_WINDOW for dry, HOLD_GAP
+      for SC). Generic "any inspection happened" is no longer enough.
+    - The pit-window check requires precondition BEFORE first qualifying pit,
+      not just both somewhere in the run.
+    - Comms-quality keyword matching is whole-word and inflection-aware so a
+      "Status update" no longer triggers credit on a rain-pit requirement.
+    - Random/panic policies should plateau ≤0.40 weighted_final on every
+      family; expert sequences keep clearing 0.85+. Verified by
+      tests/smoke_all_scenarios.py and tests/test_scoring_strict.py.
+"""
+
+from __future__ import annotations
+
+import re
 
 WEIGHTS = {
     "race_result": 0.35,
@@ -10,6 +27,28 @@ WEIGHTS = {
 }
 
 DRY_COMPOUNDS = {"soft", "medium", "hard"}
+
+# Per-family bookkeeping. The set of inspections that MUST be called before
+# the optimal pit window credit is awarded, and the verb the agent must have
+# used at least once to demonstrate situational awareness.
+FAMILY_PRECONDITIONS = {
+    "dry_strategy_sprint": {
+        "required_pre_pit_inspection": "ASSESS_UNDERCUT_WINDOW",
+        "required_action_verb": None,
+    },
+    "weather_roulette": {
+        "required_pre_pit_inspection": "REQUEST_FORECAST",
+        "required_action_verb": None,
+    },
+    "late_safety_car": {
+        "required_pre_pit_inspection": None,
+        "required_action_verb": "HOLD_GAP",
+    },
+    "championship_decider": {
+        "required_pre_pit_inspection": "REQUEST_FORECAST",
+        "required_action_verb": "CHECK_OPPONENT_STRATEGY",
+    },
+}
 
 
 def compute_race_result(
@@ -39,15 +78,17 @@ def compute_strategic_decisions(
     forecast_called_before_pit: bool,
     undercut_assessed_before_pit: bool,
 ) -> float:
+    """Generic strategic-decision dim. Keeps the simple shape used by the
+    isolation tests in test_scoring.py; the family-specific tightening lives
+    in `_scenario_strategy_adjustment`.
+    """
     if not pit_decisions:
         return 0.0
     lo, hi = optimal_pit_window
     in_window = any(lo <= int(p.get("lap", 0)) <= hi for p in pit_decisions)
     if not in_window:
         return 0.25
-    precondition = (
-        forecast_called_before_pit or undercut_assessed_before_pit or bool(inspection_calls)
-    )
+    precondition = forecast_called_before_pit or undercut_assessed_before_pit
     return 1.0 if precondition else 0.65
 
 
@@ -82,15 +123,21 @@ def compute_comms_quality(
     radio_calls_made: list,
     pit_wall_calls: list,
 ) -> float:
-    required = [str(x).lower() for x in triggered_comms_events if x]
+    """Whole-word keyword match against radio + pit-wall messages.
+
+    A required trigger like "pit" only counts if a message contains the word
+    "pit" (or a plausible inflection like "pits"/"pitting"/"pitlane"); a
+    generic "Status update." no longer scores. Empty trigger list returns 1.0
+    (nothing was required).
+    """
+    required = [str(x).lower().strip() for x in triggered_comms_events if x]
+    required = [r for r in required if r]
     if not required:
         return 1.0
     text = " ".join(
         str(call.get("message", call)).lower() for call in radio_calls_made + pit_wall_calls
     )
-    hits = sum(1 for needle in required if needle in text)
-    if hits == 0 and radio_calls_made:
-        hits = 1
+    hits = sum(1 for needle in required if _keyword_hits(needle, text))
     return _clamp01(hits / len(required))
 
 
@@ -158,9 +205,10 @@ def compute_multi_objective_scores(**kwargs) -> dict:
         undercut_before,
         required_actions,
         action_verbs,
+        inspection_calls,
+        n_pit_stops=int(kwargs.get("n_pit_stops", len(pit_decisions))),
+        target_n_pits=int(criteria.get("target_n_pits", kwargs.get("target_n_pits", 1))),
     )
-    if strategic >= 0.85:
-        race = max(race, 0.90)
 
     tyre = compute_tyre_management(
         kwargs.get("final_tyre_health", 0.0),
@@ -192,6 +240,13 @@ def compute_multi_objective_scores(**kwargs) -> dict:
         kwargs.get("steps_used", 0),
     )
 
+    # Race-result halo: only if strategic dim is high AND comms quality is at
+    # least half-way decent. Random agents that pit lucky but never radio the
+    # driver get strategic=0.95 but comms=0 → no halo. Real expert play gets
+    # both, so the bonus still applies.
+    if strategic >= 0.95 and comms >= 0.5:
+        race = max(race, 0.90)
+
     dims = {
         "race_result": _clamp01(race),
         "strategic_decisions": _clamp01(strategic),
@@ -215,29 +270,109 @@ def _scenario_strategy_adjustment(
     undercut_before: bool,
     required_actions: set[str],
     action_verbs: set[str],
+    inspection_calls: dict,
+    n_pit_stops: int = 0,
+    target_n_pits: int = 1,
 ) -> float:
+    """Family-specific strict scoring of the strategic dimension.
+
+    Every family now requires:
+      1. A pit decision in (or within tight tolerance of) the optimal window
+      2. The pit uses the required compound when one is specified
+      3. The family-specific precondition fires BEFORE the first qualifying pit
+      4. n_pit_stops is at most target_n_pits + 0 (extra pits cap the dim)
+    Missing any → caps at 0.30–0.65 (rewards partial play but stays clear of
+    the 0.95 strategic-halo trigger).
+    """
     lo, hi = optimal_window
     tolerance = 2 if scenario_family in {"dry_strategy_sprint", "weather_roulette"} else 0
+
     matching_pits = [
         p
         for p in pit_decisions
         if lo <= int(p.get("lap", 0)) <= hi + tolerance
         and (required_compound is None or p.get("compound") == required_compound)
     ]
+    if not matching_pits:
+        return {
+            "dry_strategy_sprint": min(base, 0.30),
+            "weather_roulette": 0.20,
+            "late_safety_car": 0.15,
+            "championship_decider": min(base, 0.35),
+        }.get(scenario_family, base)
+
+    # Over-pitting cap: stratagy was at best partially correct if the agent
+    # pitted more than target. One extra pit → cap at 0.60. Two+ → 0.40.
+    over_pit_cap = 1.0
+    if n_pit_stops > target_n_pits:
+        extra = n_pit_stops - target_n_pits
+        over_pit_cap = 0.60 if extra == 1 else 0.40
+
+    first_qualifying_pit_lap = min(int(p.get("lap", 999)) for p in matching_pits)
+    rules = FAMILY_PRECONDITIONS.get(scenario_family, {})
+    insp_required = rules.get("required_pre_pit_inspection")
+    verb_required = rules.get("required_action_verb")
+
+    insp_ok = True
+    if insp_required:
+        insp_laps = inspection_calls.get(insp_required, [])
+        insp_ok = any(int(lap) <= first_qualifying_pit_lap for lap in insp_laps)
+
+    verb_ok = True
+    if verb_required:
+        verb_ok = verb_required in action_verbs
+
     if scenario_family == "dry_strategy_sprint":
-        return 1.0 if matching_pits and undercut_before else (0.55 if matching_pits else base)
+        result = 1.0 if insp_ok else 0.55
+        return min(result, over_pit_cap)
+
     if scenario_family == "weather_roulette":
-        return 1.0 if matching_pits and forecast_before else (0.60 if matching_pits else 0.20)
+        result = 1.0 if insp_ok else 0.45
+        return min(result, over_pit_cap)
+
     if scenario_family == "late_safety_car":
         under_sc = any(p.get("under_sc") for p in matching_pits)
-        held_gap = "HOLD_GAP" in action_verbs or not required_actions
-        return 1.0 if matching_pits and under_sc and held_gap else (0.50 if matching_pits else 0.15)
+        if required_actions and not (required_actions & action_verbs):
+            return min(0.45, over_pit_cap)
+        if not verb_ok:
+            return min(0.55, over_pit_cap)
+        result = 1.0 if under_sc else 0.65
+        return min(result, over_pit_cap)
+
     if scenario_family == "championship_decider":
-        inspected = forecast_before and any(
-            "CHECK_OPPONENT_STRATEGY" in k for k in action_verbs | set()
+        result = 1.0 if (insp_ok and verb_ok) else 0.55
+        return min(result, over_pit_cap)
+
+    return min(base, over_pit_cap)
+
+
+_WORD_RE_CACHE: dict[str, re.Pattern[str]] = {}
+
+
+def _keyword_hits(needle: str, haystack: str) -> bool:
+    """True iff `needle` (already lowercased) appears as a whole word or a
+    plausible inflection in `haystack`. Matches `pit`, `pits`, `pitting`,
+    `pitted`, `pitlane`; does NOT match `spit` or `split`. Handles common
+    English doubled-consonant inflections (pit → pitting).
+    """
+    needle = needle.strip()
+    if not needle:
+        return False
+    pattern = _WORD_RE_CACHE.get(needle)
+    if pattern is None:
+        # Allow:
+        #   - bare needle             (pit)
+        #   - +s/+es                  (pits)
+        #   - +ed / +ted              (pitted, called)
+        #   - +ing / +ting            (pitting, calling)
+        #   - +lane / +line           (pitlane, finishline)
+        #   - +ner / +ter             (cornering)
+        last = re.escape(needle[-1]) if needle else ""
+        pattern = re.compile(
+            rf"\b{re.escape(needle)}(?:{last}?ing|{last}?ed|s|es|lane|line)?\b"
         )
-        return 1.0 if matching_pits and inspected else (0.65 if matching_pits else base)
-    return base
+        _WORD_RE_CACHE[needle] = pattern
+    return bool(pattern.search(haystack))
 
 
 def _clamp01(value: float) -> float:

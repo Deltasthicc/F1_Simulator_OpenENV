@@ -218,7 +218,7 @@ def _run_trl(args) -> None:
         # GRPO-specific
         num_generations=4,          # completions per prompt for advantage estimation
         temperature=0.9,
-        max_new_tokens=96,
+        max_completion_length=96,
         max_prompt_length=1536,
         # Stability
         beta=0.01,                  # KL penalty coefficient
@@ -267,7 +267,9 @@ def _load_model_with_lora(model_name: str, args):
             model, tokenizer = FastLanguageModel.from_pretrained(
                 model_name=model_name,
                 max_seq_length=2048,
-                load_in_4bit=True,
+                load_in_4bit=False,
+                load_in_8bit=False,
+                dtype=torch.bfloat16,
                 fast_inference=False,
                 trust_remote_code=True,
             )

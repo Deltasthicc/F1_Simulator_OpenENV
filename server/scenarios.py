@@ -518,6 +518,267 @@ CHAMPIONSHIP_DECIDER: dict = {
 }
 
 
+VIRTUAL_SAFETY_CAR_WINDOW: dict = {
+    "task_name": "virtual_safety_car_window_silverstone",
+    "scenario_family": "virtual_safety_car_window",
+    "description": "Silverstone VSC: pit cheap during the virtual safety car window.",
+    "track_name": "Silverstone",
+    "total_laps": 14,
+    "max_steps": 19,
+    "max_score": 1.0,
+    "seed": 55,
+    "starting_position": 4,
+    "starting_compound": "hard",
+    "starting_fuel_kg": 95.0,
+    "starting_drive_mode": "race",
+    "opponents": [
+        {
+            "driver_number": 44,
+            "team": "Mercedes",
+            "starting_position": 1,
+            "starting_compound": "medium",
+            "pace_offset_s": -0.30,
+            "aggression": 0.72,
+            "planned_strategy": [{"compound": "soft", "planned_end_lap": 7}],
+        },
+        {
+            "driver_number": 1,
+            "team": "Red Bull",
+            "starting_position": 2,
+            "starting_compound": "medium",
+            "pace_offset_s": -0.15,
+            "aggression": 0.68,
+            "planned_strategy": [{"compound": "soft", "planned_end_lap": 8}],
+        },
+        {
+            "driver_number": 16,
+            "team": "Ferrari",
+            "starting_position": 3,
+            "starting_compound": "medium",
+            "pace_offset_s": 0.05,
+            "aggression": 0.60,
+            "planned_strategy": [{"compound": "soft", "planned_end_lap": 9}],
+        },
+        {
+            "driver_number": 4,
+            "team": "McLaren",
+            "starting_position": 5,
+            "starting_compound": "hard",
+            "pace_offset_s": 0.10,
+            "aggression": 0.55,
+            "planned_strategy": [{"compound": "soft", "planned_end_lap": 10}],
+        },
+        {
+            "driver_number": 63,
+            "team": "Mercedes",
+            "starting_position": 6,
+            "starting_compound": "medium",
+            "pace_offset_s": 0.22,
+            "aggression": 0.48,
+            "planned_strategy": [{"compound": "soft", "planned_end_lap": 7}],
+        },
+    ],
+    "weather_archetype": "clear_dry",
+    "weather_seed_overrides": {
+        "air_temp_c": 22.0,
+        "track_temp_c": 32.0,
+        "sc_events": [{"lap": 8, "sc_type": "vsc", "duration_laps": 2}],
+    },
+    "sc_archetype": "vsc_window",
+    "issues": {
+        "race_result": [{"goal": "finish_at_least_p3", "points": 0.20}],
+        "tyre_management": [{"constraint": "compound_rule_and_health_gt_35", "points": 0.15}],
+        "fuel_management": [{"constraint": "finish_with_0_5kg_margin", "points": 0.05}],
+        "strategic_decisions": [
+            {
+                "decision": "pit_in_vsc_window_laps_8_9",
+                "valid_window": [8, 9],
+                "preconditions": ["ASSESS_UNDERCUT_WINDOW"],
+                "points": 0.30,
+            },
+            {"decision": "pit_on_softs_for_push", "points": 0.10},
+            {"decision": "exactly_one_stop", "points": 0.10},
+        ],
+        "pending_comms": [
+            {"trigger": "vsc_call", "audience": "driver", "required": True, "points": 0.10}
+        ],
+    },
+    "success_criteria": {
+        "target_position": 3,
+        "bonus_position": 2,
+        "optimal_pit_window": [8, 9],
+        "target_n_pits": 1,
+        "required_compound": "soft",
+        "required_inspections": ["ASSESS_UNDERCUT_WINDOW"],
+        "required_comms": ["vsc", "box"],
+        "fuel_margin_kg": 0.5,
+        "tyre_health_min": 0.35,
+    },
+    "hidden_state": {
+        "true_tyre_curve": {
+            "hard": [1.0, 0.97, 0.94, 0.91, 0.88, 0.85, 0.82, 0.79, 0.76, 0.73, 0.70, 0.67, 0.65, 0.62],
+            "soft": [1.0, 0.91, 0.82, 0.73, 0.64, 0.55, 0.47, 0.40],
+        },
+        "opponent_strategies": {
+            "44": [{"compound": "soft", "planned_end_lap": 7}],
+            "1": [{"compound": "soft", "planned_end_lap": 8}],
+        },
+        "fuel_burn_actual": 1.85,
+        "undercut_threshold_laps": 2,
+        "vsc_lap": 8,
+        "vsc_pit_advantage_s": 12.0,
+    },
+    "dynamic_events": [
+        {"lap": 7, "type": "opponent_pit", "desc": "#44 boxes on lap 7, one lap before VSC."},
+        {"lap": 8, "type": "vsc", "desc": "VSC deployed. Pit loss reduced to ~12s this lap."},
+        {"lap": 10, "type": "vsc_end", "desc": "VSC ending. Green flag next lap."},
+    ],
+    "radio_inbox": [
+        {
+            "id": "R-401",
+            "from": "race_engineer",
+            "message": "VSC expected lap 8. Pit loss only ~12s — half the normal cost.",
+        }
+    ],
+    "memory_hint_tags": ["vsc", "silverstone", "timing_advantage"],
+}
+
+
+TYRE_CLIFF_MANAGEMENT: dict = {
+    "task_name": "tyre_cliff_management_suzuka",
+    "scenario_family": "tyre_cliff_management",
+    "description": "Suzuka tyre cliff: monitor degradation rate and pit before the soft cliff hits.",
+    "track_name": "Suzuka",
+    "total_laps": 14,
+    "max_steps": 19,
+    "max_score": 1.0,
+    "seed": 66,
+    "starting_position": 3,
+    "starting_compound": "soft",
+    "starting_fuel_kg": 90.0,
+    "starting_drive_mode": "race",
+    "opponents": [
+        {
+            "driver_number": 44,
+            "team": "Mercedes",
+            "starting_position": 1,
+            "starting_compound": "hard",
+            "pace_offset_s": -0.20,
+            "aggression": 0.62,
+            "planned_strategy": [{"compound": "medium", "planned_end_lap": 10}],
+        },
+        {
+            "driver_number": 1,
+            "team": "Red Bull",
+            "starting_position": 2,
+            "starting_compound": "medium",
+            "pace_offset_s": -0.08,
+            "aggression": 0.70,
+            "planned_strategy": [{"compound": "soft", "planned_end_lap": 9}],
+        },
+        {
+            "driver_number": 16,
+            "team": "Ferrari",
+            "starting_position": 4,
+            "starting_compound": "soft",
+            "pace_offset_s": 0.08,
+            "aggression": 0.75,
+            "planned_strategy": [{"compound": "medium", "planned_end_lap": 5}],
+        },
+        {
+            "driver_number": 4,
+            "team": "McLaren",
+            "starting_position": 5,
+            "starting_compound": "soft",
+            "pace_offset_s": 0.15,
+            "aggression": 0.58,
+            "planned_strategy": [{"compound": "medium", "planned_end_lap": 7}],
+        },
+        {
+            "driver_number": 14,
+            "team": "Aston Martin",
+            "starting_position": 6,
+            "starting_compound": "medium",
+            "pace_offset_s": 0.30,
+            "aggression": 0.42,
+            "planned_strategy": [{"compound": "soft", "planned_end_lap": 8}],
+        },
+    ],
+    "weather_archetype": "clear_dry",
+    "weather_seed_overrides": {"air_temp_c": 30.0, "track_temp_c": 46.0},
+    "sc_archetype": "none",
+    "issues": {
+        "race_result": [{"goal": "finish_at_least_p3", "points": 0.20}],
+        "tyre_management": [
+            {"constraint": "avoid_cliff_tyre_health_gt_20_when_pitting", "points": 0.20}
+        ],
+        "fuel_management": [{"constraint": "finish_with_0_5kg_margin", "points": 0.05}],
+        "strategic_decisions": [
+            {
+                "decision": "pit_in_window_6_9_before_cliff",
+                "valid_window": [6, 9],
+                "preconditions": ["INSPECT_TYRE_DEGRADATION"],
+                "points": 0.30,
+            },
+            {"decision": "use_medium_second_stint", "points": 0.10},
+        ],
+        "pending_comms": [
+            {"trigger": "tyre_cliff", "audience": "driver", "required": True, "points": 0.15}
+        ],
+    },
+    "success_criteria": {
+        "target_position": 3,
+        "bonus_position": 2,
+        "optimal_pit_window": [6, 9],
+        "target_n_pits": 1,
+        "required_compound": "medium",
+        "required_inspections": ["INSPECT_TYRE_DEGRADATION"],
+        "required_comms": ["tyre", "cliff"],
+        "fuel_margin_kg": 0.5,
+        "tyre_health_min": 0.20,
+    },
+    "hidden_state": {
+        "true_tyre_curve": {
+            "soft": [1.00, 0.90, 0.80, 0.70, 0.58, 0.44, 0.30, 0.16, 0.06],
+            "medium": [1.00, 0.95, 0.90, 0.85, 0.80, 0.75, 0.70, 0.65],
+            "hard": [1.00, 0.97, 0.94, 0.91, 0.88, 0.85],
+        },
+        "opponent_strategies": {
+            "16": [{"compound": "medium", "planned_end_lap": 5}],
+            "4": [{"compound": "medium", "planned_end_lap": 7}],
+        },
+        "fuel_burn_actual": 1.80,
+        "undercut_threshold_laps": 2,
+        "cliff_lap_soft": 9,
+    },
+    "dynamic_events": [
+        {
+            "lap": 5,
+            "type": "opponent_pit",
+            "desc": "#16 pits early. They see the soft tyre cliff coming.",
+        },
+        {
+            "lap": 9,
+            "type": "tyre_cliff",
+            "desc": "Soft tyre cliff. Extreme degradation. Lap time delta growing.",
+        },
+    ],
+    "radio_inbox": [
+        {
+            "id": "R-501",
+            "from": "race_engineer",
+            "message": "Track temp 46C. Soft tyre cliff expected lap 9. Inspect degradation early.",
+        },
+        {
+            "id": "R-502",
+            "from": "race_engineer",
+            "message": "#16 Ferrari pitting early. Tyre cliff is real.",
+        },
+    ],
+    "memory_hint_tags": ["tyre_cliff", "suzuka", "high_deg"],
+}
+
+
 SCENARIOS: dict[str, dict] = {
     "dry_strategy_sprint": DRY_STRATEGY_SPRINT,
     "dry_strategy_sprint_monza": DRY_STRATEGY_SPRINT,
@@ -527,4 +788,8 @@ SCENARIOS: dict[str, dict] = {
     "late_safety_car_monaco": LATE_SAFETY_CAR,
     "championship_decider": CHAMPIONSHIP_DECIDER,
     "championship_decider_catalunya": CHAMPIONSHIP_DECIDER,
+    "virtual_safety_car_window": VIRTUAL_SAFETY_CAR_WINDOW,
+    "virtual_safety_car_window_silverstone": VIRTUAL_SAFETY_CAR_WINDOW,
+    "tyre_cliff_management": TYRE_CLIFF_MANAGEMENT,
+    "tyre_cliff_management_suzuka": TYRE_CLIFF_MANAGEMENT,
 }

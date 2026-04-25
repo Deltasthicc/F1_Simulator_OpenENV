@@ -219,6 +219,24 @@ def _scripted_trained_policy(obs, history: list[dict], family: str) -> str:
             return "PIT_NOW medium"
         return "DONE" if obs.current_lap >= obs.total_laps else "STAY_OUT"
 
+    if family == "virtual_safety_car_window":
+        # Weaker than expert: skips INSPECT_TYRE_DEGRADATION, pits slightly late
+        if "ASSESS_UNDERCUT_WINDOW" not in text:
+            return "ASSESS_UNDERCUT_WINDOW"
+        if obs.race_status == "vsc" and obs.ego_tyre_compound != "soft":
+            return "PIT_NOW soft"
+        if obs.current_lap >= 9 and obs.ego_tyre_compound != "soft":
+            return "PIT_NOW soft"
+        return "DONE" if obs.current_lap >= obs.total_laps else "STAY_OUT"
+
+    if family == "tyre_cliff_management":
+        # Weaker than expert: only inspects once, pits at lap 8 (not 7)
+        if "INSPECT_TYRE_DEGRADATION" not in text:
+            return "INSPECT_TYRE_DEGRADATION"
+        if obs.current_lap >= 8 and obs.ego_tyre_compound == "soft":
+            return "PIT_NOW medium"
+        return "DONE" if obs.current_lap >= obs.total_laps else "STAY_OUT"
+
     # dry_strategy_sprint default
     if "ASSESS_UNDERCUT_WINDOW" not in text:
         return "ASSESS_UNDERCUT_WINDOW"
@@ -272,6 +290,30 @@ def _scripted_policy(obs, history: list[dict], family: str) -> str:
         if "INSPECT_FUEL_MARGIN" not in text and obs.current_lap >= 12:
             return "INSPECT_FUEL_MARGIN"
         return "DONE" if obs.current_lap >= obs.total_laps else "STAY_OUT"
+    if family == "virtual_safety_car_window":
+        if "ASSESS_UNDERCUT_WINDOW" not in text:
+            return "ASSESS_UNDERCUT_WINDOW"
+        if "INSPECT_TYRE_DEGRADATION" not in text:
+            return "INSPECT_TYRE_DEGRADATION"
+        if obs.race_status == "vsc" and obs.ego_tyre_compound != "soft" and "VSC" not in text:
+            return 'RADIO_DRIVER "VSC deployed. Boxing for softs. Low pit loss."'
+        if obs.race_status == "vsc" and obs.ego_tyre_compound != "soft":
+            return "PIT_NOW soft"
+        if "INSPECT_FUEL_MARGIN" not in text and obs.current_lap >= 12:
+            return "INSPECT_FUEL_MARGIN"
+        return "DONE" if obs.current_lap >= obs.total_laps else "STAY_OUT"
+    if family == "tyre_cliff_management":
+        if "INSPECT_TYRE_DEGRADATION" not in text:
+            return "INSPECT_TYRE_DEGRADATION"
+        if "MANAGE_TYRE_TEMP cool" not in text and obs.current_lap >= 3:
+            return "MANAGE_TYRE_TEMP cool"
+        if obs.ego_tyre_health_pct < 55 and "cliff" not in text.lower():
+            return 'RADIO_DRIVER "Tyre cliff incoming. Boxing for medium."'
+        if obs.current_lap >= 7 and obs.ego_tyre_compound == "soft":
+            return "PIT_NOW medium"
+        if "INSPECT_FUEL_MARGIN" not in text and obs.current_lap >= 12:
+            return "INSPECT_FUEL_MARGIN"
+        return "DONE" if obs.current_lap >= obs.total_laps else "STAY_OUT"
     if "CHECK_OPPONENT_STRATEGY 16" not in text:
         return "CHECK_OPPONENT_STRATEGY 16"
     if "ASSESS_UNDERCUT_WINDOW" not in text:
@@ -290,6 +332,10 @@ def _untrained_policy(obs, rng: random.Random, family: str) -> str:
         return rng.choice(["STAY_OUT", "SET_MODE push", "REQUEST_INFO weather"])
     if family == "weather_roulette" and obs.weather_current.get("rain_intensity", 0) > 0.4:
         return "STAY_OUT" if obs.current_lap < 9 else "PIT_NOW inter"
+    if family == "virtual_safety_car_window" and obs.race_status == "vsc":
+        return "STAY_OUT"  # untrained ignores the VSC window
+    if family == "tyre_cliff_management" and obs.current_lap >= 10:
+        return rng.choice(["PIT_NOW soft", "STAY_OUT"])  # reacts too late
     if obs.current_lap > obs.total_laps * 0.65 and obs.ego_tyre_compound in {"medium", "hard"}:
         return rng.choice(["PIT_NOW soft", "STAY_OUT"])
     return rng.choice(["STAY_OUT", "SET_MODE race", "SET_MODE conserve"])
@@ -334,7 +380,18 @@ def _write_final_results(results: dict, output: Path) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default=None)
-    parser.add_argument("--tasks", nargs="+", default=["dry_strategy_sprint"])
+    parser.add_argument(
+        "--tasks",
+        nargs="+",
+        default=[
+            "dry_strategy_sprint",
+            "weather_roulette",
+            "late_safety_car",
+            "championship_decider",
+            "virtual_safety_car_window",
+            "tyre_cliff_management",
+        ],
+    )
     parser.add_argument("--n-seeds", type=int, default=5)
     parser.add_argument("--modes", nargs="+", default=["random", "untrained", "trained", "expert"])
     parser.add_argument("--output-json", default="results/eval_summary.json")

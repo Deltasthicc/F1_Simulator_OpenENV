@@ -248,6 +248,7 @@ class F1StrategistEnvironment(Environment[F1Action, F1Observation, F1State]):
             "BRIEF_MEDIA": self._h_brief_media,
             "REQUEST_INFO": self._h_request_info,
             "ESCALATE_TO_PRINCIPAL": self._h_escalate,
+            "MANAGE_TYRE_TEMP": self._h_manage_tyre_temp,
             "DONE": self._h_done,
         }
         handler = handlers.get(verb)
@@ -463,6 +464,30 @@ class F1StrategistEnvironment(Environment[F1Action, F1Observation, F1State]):
     def _h_let_by(self, arg: str) -> tuple[float, str]:
         self._harmful_actions += 1
         return -0.01, f"Team-order let-by logged for {arg.strip() or 'unknown car'}."
+
+    def _h_manage_tyre_temp(self, arg: str) -> tuple[float, str]:
+        """Adjust tyre temperature management mode.
+
+        warm   — increases grip window but adds marginal wear (out-lap/push scenarios)
+        cool   — reduces wear at cost of grip (overheating/cliff scenarios)
+        normal — return to balanced default
+        """
+        target = arg.strip().lower()
+        if target not in {"warm", "cool", "normal"}:
+            self._invalid_actions += 1
+            return -0.02, f"Invalid MANAGE_TYRE_TEMP target '{target}'. Use warm|cool|normal."
+        if target == "warm":
+            # Slight push mode to generate tyre heat
+            if self._ego_car.drive_mode not in {"push"}:
+                self._ego_car.drive_mode = "push"
+        elif target == "cool":
+            # Drop to conserve to reduce surface temp
+            if self._ego_car.drive_mode not in {"conserve", "tyre_save"}:
+                self._ego_car.drive_mode = "tyre_save"
+        else:
+            if self._ego_car.drive_mode not in {"race"}:
+                self._ego_car.drive_mode = "race"
+        return 0.005, f"Tyre temperature mode: {target}. Drive mode adjusted."
 
     def _h_inspect_tyre(self, arg: str) -> tuple[float, str]:
         is_new, info = self._hidden_state.reveal("true_tyre_curve", self._ego_car.current_compound)

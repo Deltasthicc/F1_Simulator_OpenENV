@@ -48,6 +48,15 @@ FAMILY_PRECONDITIONS = {
         "required_pre_pit_inspection": "REQUEST_FORECAST",
         "required_action_verb": "CHECK_OPPONENT_STRATEGY",
     },
+    # New families
+    "virtual_safety_car_window": {
+        "required_pre_pit_inspection": "ASSESS_UNDERCUT_WINDOW",
+        "required_action_verb": None,
+    },
+    "tyre_cliff_management": {
+        "required_pre_pit_inspection": "INSPECT_TYRE_DEGRADATION",
+        "required_action_verb": None,
+    },
 }
 
 
@@ -299,6 +308,8 @@ def _scenario_strategy_adjustment(
             "weather_roulette": 0.20,
             "late_safety_car": 0.15,
             "championship_decider": min(base, 0.35),
+            "virtual_safety_car_window": 0.20,
+            "tyre_cliff_management": 0.20,
         }.get(scenario_family, base)
 
     # Over-pitting cap: stratagy was at best partially correct if the agent
@@ -341,6 +352,17 @@ def _scenario_strategy_adjustment(
 
     if scenario_family == "championship_decider":
         result = 1.0 if (insp_ok and verb_ok) else 0.55
+        return min(result, over_pit_cap)
+
+    if scenario_family == "virtual_safety_car_window":
+        # Reward pitting under VSC (cheap pit) as the highest-quality play.
+        under_vsc = any(p.get("under_sc") for p in matching_pits)
+        result = 1.0 if (insp_ok and under_vsc) else (0.70 if insp_ok else 0.45)
+        return min(result, over_pit_cap)
+
+    if scenario_family == "tyre_cliff_management":
+        # Reward inspecting tyre degradation before the cliff pit.
+        result = 1.0 if insp_ok else 0.45
         return min(result, over_pit_cap)
 
     return min(base, over_pit_cap)

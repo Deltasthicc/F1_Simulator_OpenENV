@@ -79,6 +79,41 @@ EXPERT_SEQUENCES = {
         "RADIO_DRIVER Rival covered. Bring home the title.",
         "DONE",
     ],
+    # VSC scenario — exploit the half-cost pit window during Virtual Safety Car
+    "virtual_safety_car_window": [
+        "INSPECT_TYRE_DEGRADATION",
+        "CHECK_OPPONENT_STRATEGY 44",
+        "ASSESS_UNDERCUT_WINDOW",
+        "SET_MODE race",
+        "STAY_OUT",
+        "STAY_OUT",
+        "STAY_OUT",
+        "STAY_OUT",
+        "RADIO_DRIVER VSC deployed. Boxing for softs this lap. Low pit loss.",
+        "PIT_NOW soft",
+        "SET_MODE push",
+        "STAY_OUT",
+        "STAY_OUT",
+        "INSPECT_FUEL_MARGIN",
+        "DONE",
+    ],
+    # Tyre cliff — inspect degradation rate early, pit before health collapses
+    "tyre_cliff_management": [
+        "INSPECT_TYRE_DEGRADATION",
+        "CHECK_OPPONENT_STRATEGY 16",
+        "SET_MODE conserve",
+        "MANAGE_TYRE_TEMP cool",
+        "INSPECT_TYRE_DEGRADATION",
+        "RADIO_DRIVER Tyre cliff incoming. Softs will be gone by lap 9. Boxing for medium.",
+        "STAY_OUT",
+        "PIT_NOW medium",
+        "SET_MODE push",
+        "STAY_OUT",
+        "STAY_OUT",
+        "STAY_OUT",
+        "INSPECT_FUEL_MARGIN",
+        "DONE",
+    ],
 }
 
 
@@ -87,6 +122,17 @@ PANIC_SEQUENCES = {
     "weather_roulette": ["STAY_OUT", "STAY_OUT", "STAY_OUT", "PIT_NOW soft", "STAY_OUT", "DONE"],
     "late_safety_car": ["PIT_NOW hard", "STAY_OUT", "STAY_OUT", "STAY_OUT", "DONE"],
     "championship_decider": ["SET_MODE conserve", "STAY_OUT", "STAY_OUT", "STAY_OUT", "DONE"],
+    # VSC panic: pit at wrong time (before VSC, then again during VSC — over-pitting)
+    "virtual_safety_car_window": [
+        "PIT_NOW medium", "STAY_OUT", "STAY_OUT", "STAY_OUT",
+        "PIT_NOW soft", "STAY_OUT", "STAY_OUT", "DONE",
+    ],
+    # Cliff panic: stay out until the cliff, then pit with wrong compound
+    "tyre_cliff_management": [
+        "STAY_OUT", "STAY_OUT", "STAY_OUT", "STAY_OUT",
+        "STAY_OUT", "STAY_OUT", "STAY_OUT", "STAY_OUT",
+        "PIT_NOW hard", "STAY_OUT", "DONE",
+    ],
 }
 
 

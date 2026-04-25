@@ -38,10 +38,10 @@ def run(base_url: str) -> int:
     # 1. /health
     try:
         h = get_json(f"{base_url}/health")
-        assert h.get("status") == "ok", f"health: {h}"
+        assert h.get("status") in {"ok", "healthy"}, f"health: {h}"
         print("  ok: /health")
     except Exception as e:
-        print(f"FAIL: /health → {e}")
+        print(f"FAIL: /health -> {e}")
         failures += 1
 
     # 2. /reset
@@ -51,34 +51,34 @@ def run(base_url: str) -> int:
         assert total > 0, f"reset returned total_issues_count={total}"
         print(f"  ok: /reset (total_issues_count={total})")
     except Exception as e:
-        print(f"FAIL: /reset → {e}")
+        print(f"FAIL: /reset -> {e}")
         failures += 1
 
     # 3. /step STAY_OUT
     try:
-        r = post_json(f"{base_url}/step", {"command": "STAY_OUT"})
+        r = post_json(f"{base_url}/step", {"action": {"command": "STAY_OUT"}})
         assert r.get("done") is False, f"step STAY_OUT: done={r.get('done')}"
         print("  ok: /step STAY_OUT")
     except Exception as e:
-        print(f"FAIL: /step STAY_OUT → {e}")
+        print(f"FAIL: /step STAY_OUT -> {e}")
         failures += 1
 
     # 4. /step garbage → -0.02
     try:
-        r = post_json(f"{base_url}/step", {"command": "ZZZZ_NOT_A_COMMAND"})
+        r = post_json(f"{base_url}/step", {"action": {"command": "ZZZZ_NOT_A_COMMAND"}})
         assert abs(r.get("reward", 0.0) - (-0.02)) < 1e-6, f"step garbage: reward={r.get('reward')}"
         print("  ok: /step garbage (-0.02)")
     except Exception as e:
-        print(f"FAIL: /step garbage → {e}")
+        print(f"FAIL: /step garbage -> {e}")
         failures += 1
 
     # 5. /step DONE
     try:
-        r = post_json(f"{base_url}/step", {"command": "DONE"})
+        r = post_json(f"{base_url}/step", {"action": {"command": "DONE"}})
         assert r.get("done") is True, f"step DONE: done={r.get('done')}"
         print("  ok: /step DONE")
     except Exception as e:
-        print(f"FAIL: /step DONE → {e}")
+        print(f"FAIL: /step DONE -> {e}")
         failures += 1
 
     return failures

@@ -12,13 +12,13 @@ This document is your day-by-day work queue. Tick the boxes as you go.
 
 ## Day 0 — Bootstrap (parallel with Person 2)
 
-- [ ] Clone repo, `pip install -e .` works
-- [ ] Read [`docs/architecture.md`](architecture.md) end-to-end
-- [ ] Read [`docs/physics-model.md`](physics-model.md) end-to-end
-- [ ] Read [`docs/scenarios.md`](scenarios.md) end-to-end
-- [ ] **Run `scripts/extract_track_csvs.py`** — populates `data/tracks/Monza.csv`, etc. Validate each loads in a Python REPL via `pandas.read_csv`.
-- [ ] Spot-check track lengths against published F1 figures. If any CSV is in km, add a unit-conversion in `track.py`.
-- [ ] Commit `data/tracks/*.csv` and `data/tracks/README.md` to git.
+- [x] Clone repo, `pip install -e .` works
+- [x] Read [`docs/architecture.md`](architecture.md) end-to-end
+- [x] Read [`docs/physics-model.md`](physics-model.md) end-to-end
+- [x] Read [`docs/scenarios.md`](scenarios.md) end-to-end
+- [x] **Run `scripts/extract_track_csvs.py`** — populates `data/tracks/Monza.csv`, etc. Validate each loads in a Python REPL via `pandas.read_csv`.
+- [x] Spot-check track lengths against published F1 figures. If any CSV is in km, add a unit-conversion in `track.py`.
+- [x] Commit `data/tracks/*.csv` and `data/tracks/README.md` to git.
 
 ---
 
@@ -147,8 +147,8 @@ class F1StrategistEnvironment(Environment[F1Action, F1Observation, F1State]):
 
 ### 1.7 Smoke tests — `tests/`
 
-- [ ] `tests/test_environment.py` — pytest, asserts `reset()` returns valid `F1Observation`, `step` works
-- [ ] `tests/smoke_http.py` — boots a server in a subprocess, hits `/health`, `/reset`, `/step`, asserts 200s
+- [x] `tests/test_environment.py` — pytest, asserts `reset()` returns valid `F1Observation`, `step` works
+- [x] `tests/smoke_http.py` — boots a server in a subprocess, hits `/health`, `/reset`, `/step`, asserts 200s
 
 **Phase 1 exit criteria:** Both smoke tests pass. Server boots cleanly. One full episode runs to `done=True`.
 
@@ -426,9 +426,9 @@ Test: hit `/web` on the running Space and confirm the Gradio panel works.
 
 ## Definition of done (Person 1)
 
-- [ ] All Phase 1 boxes ticked
-- [ ] All Phase 2 boxes ticked
-- [ ] Postmortem implemented and tested
-- [ ] Visualizer produces a watchable GIF for at least one rollout
+- [x] All Phase 1 boxes ticked
+- [x] All Phase 2 boxes ticked
+- [x] Postmortem implemented and tested
+- [x] Visualizer produces a watchable GIF for at least one rollout
 - [ ] Gradio web UI works on the live HF Space
-- [ ] No unresolved TODO comments in `server/`
+- [x] No unresolved TODO comments in `server/`

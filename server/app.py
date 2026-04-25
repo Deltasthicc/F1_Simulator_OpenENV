@@ -25,11 +25,13 @@ app = create_fastapi_app(lambda: _shared_env, F1Action, F1Observation)
 # Optional Gradio web UI at /web
 if os.environ.get("ENABLE_WEB_INTERFACE") == "1":
     try:
+        import gradio as gr
         from server.visualizer import build_gradio_panel
+
         gradio_app = build_gradio_panel(_shared_env)
-        # Mount under /web — implementation provided by visualizer.py
+        app = gr.mount_gradio_app(app, gradio_app, path="/web")
     except ImportError:
-        pass  # Gradio not installed; skip silently
+        pass
 
 
 def main():

@@ -1,17 +1,9 @@
-"""
-Per-scenario solvability smoke test.
+"""Per-scenario expert-vs-panic smoke test."""
 
-For each scenario family + the stretch:
-    - run the expert solver, assert final score ≥ 0.85
-    - run a deliberately-bad scripted policy, assert score ≤ 0.40
-
-If this passes, scenarios are well-formed and the reward signal is
-discriminative (≥0.45 spread).
-
-CLI:
-    python tests/smoke_all_scenarios.py
-"""
 import sys
+
+from baselines.expert_solver import EXPERT_SEQUENCES, PANIC_SEQUENCES, run_sequence
+from server.scenarios import SCENARIOS
 
 
 SCENARIOS_TO_TEST = [
@@ -25,14 +17,20 @@ SCENARIOS_TO_TEST = [
 def main() -> int:
     failures = 0
     for family in SCENARIOS_TO_TEST:
-        # TODO Phase 2:
-        # 1. env = F1StrategistEnvironment(); env.reset(options={"task": family, "seed": 42})
-        # 2. expert_score = run_expert(env)
-        # 3. assert expert_score >= 0.85
-        # 4. env.reset(options={"task": family, "seed": 42}); panic_score = run_panic(env)
-        # 5. assert panic_score <= 0.40
-        pass
-    print("smoke_all_scenarios stub: implement in Phase 2 (Person 2).")
+        scenario = SCENARIOS[family]
+        expert_score, _ = run_sequence(scenario, EXPERT_SEQUENCES[family], seed=42)
+        panic_score, _ = run_sequence(scenario, PANIC_SEQUENCES[family], seed=42)
+        print(f"{family:<24} expert={expert_score:.3f} panic={panic_score:.3f}")
+        if expert_score < 0.85:
+            print(f"FAIL: {family} expert score below 0.85")
+            failures += 1
+        if panic_score > 0.40:
+            print(f"FAIL: {family} panic score above 0.40")
+            failures += 1
+    if failures:
+        print(f"\n{failures} scenario check(s) failed.")
+    else:
+        print("\nAll scenario checks passed.")
     return failures
 
 

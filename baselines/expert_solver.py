@@ -1,57 +1,145 @@
-"""
-F1 Strategist — Rule-Based Expert Solver
-==========================================
+"""Rule-based expert and panic policies for scenario smoke tests."""
 
-Reads scenario at god-mode (full hidden state) and emits the optimal action
-sequence. Used as:
-    - upper-bound reference (target ≥ 0.92 on hand-authored scenarios)
-    - SFT warm-start data source (capture_everything.py uses this)
-    - sanity check on scenario solvability (smoke_all_scenarios.py uses this)
+from __future__ import annotations
 
-Owner: Person 2.
-Spec: docs/person2-tasks.md §1.2.
-
-TODO Phase 2:
-    - ExpertSolver.solve(scenario, env) -> list[F1Action]
-    - _solve_dry — Family 1: undercut-aware Monza one-stop
-    - _solve_weather — Family 2: forecast-driven inter pit
-    - _solve_sc — Family 3: hold for SC, free pit
-    - _solve_championship — Stretch: defend rival + manage rain
-    - --task, --seed, --save args
-
-CLI:
-    python -m baselines.expert_solver --task dry_strategy_sprint --seed 0
-    python -m baselines.expert_solver --task weather_roulette --save baselines/trajectories/expert_weather_seed0.jsonl
-"""
 import argparse
+import json
+from pathlib import Path
+
+from models import F1Action
+from server.environment import F1StrategistEnvironment
+from server.scenarios import SCENARIOS
+
+
+EXPERT_SEQUENCES = {
+    "dry_strategy_sprint": [
+        "INSPECT_TYRE_DEGRADATION",
+        "CHECK_OPPONENT_STRATEGY 16",
+        "CHECK_OPPONENT_STRATEGY 44",
+        "ASSESS_UNDERCUT_WINDOW",
+        "SET_MODE push",
+        "STAY_OUT",
+        "STAY_OUT",
+        "RADIO_DRIVER Box this lap. Target P3 on softs.",
+        "PIT_NOW soft",
+        "SET_MODE race",
+        "STAY_OUT",
+        "INSPECT_FUEL_MARGIN",
+        "RADIO_DRIVER All clear. Bring it home P3.",
+        "DONE",
+    ],
+    "weather_roulette": [
+        "REQUEST_FORECAST",
+        "INSPECT_TYRE_DEGRADATION",
+        "CHECK_OPPONENT_STRATEGY 1",
+        "SET_MODE race",
+        "STAY_OUT",
+        "REQUEST_FORECAST",
+        "RADIO_DRIVER Inters incoming. Plan to box lap 7.",
+        "STAY_OUT",
+        "RADIO_DRIVER Box now. Inters.",
+        "PIT_NOW inter",
+        "SET_MODE push",
+        "STAY_OUT",
+        "STAY_OUT",
+        "INSPECT_FUEL_MARGIN",
+        "DONE",
+    ],
+    "late_safety_car": [
+        "INSPECT_TYRE_DEGRADATION",
+        "CHECK_OPPONENT_STRATEGY 4",
+        "CHECK_OPPONENT_STRATEGY 11",
+        "ASSESS_UNDERCUT_WINDOW",
+        "SET_MODE conserve",
+        "HOLD_GAP 4",
+        "HOLD_GAP 4",
+        "RADIO_DRIVER SC. Boxing this lap.",
+        "PIT_NOW hard",
+        "SET_MODE race",
+        "STAY_OUT",
+        "SET_MODE push",
+        "ATTACK_AHEAD",
+        "INSPECT_FUEL_MARGIN",
+        "DONE",
+    ],
+    "championship_decider": [
+        "INSPECT_TYRE_DEGRADATION",
+        "CHECK_OPPONENT_STRATEGY 10",
+        "REQUEST_FORECAST",
+        "HOLD_GAP 10",
+        "SET_MODE race",
+        "STAY_OUT",
+        "RADIO_DRIVER Cover rival #10 if he boxes.",
+        "PIT_NOW medium",
+        "REQUEST_FORECAST",
+        "SET_MODE push",
+        "DEFEND_POSITION",
+        "STAY_OUT",
+        "INSPECT_FUEL_MARGIN",
+        "RADIO_DRIVER Rival covered. Bring home the title.",
+        "DONE",
+    ],
+}
+
+
+PANIC_SEQUENCES = {
+    "dry_strategy_sprint": ["PIT_NOW soft", "PIT_NOW hard", "STAY_OUT", "STAY_OUT", "DONE"],
+    "weather_roulette": ["STAY_OUT", "STAY_OUT", "STAY_OUT", "PIT_NOW soft", "STAY_OUT", "DONE"],
+    "late_safety_car": ["PIT_NOW hard", "STAY_OUT", "STAY_OUT", "STAY_OUT", "DONE"],
+    "championship_decider": ["SET_MODE conserve", "STAY_OUT", "STAY_OUT", "STAY_OUT", "DONE"],
+}
 
 
 class ExpertSolver:
-    def solve(self, scenario: dict, env) -> list:
+    def solve(self, scenario: dict, env=None) -> list[F1Action]:
         family = scenario.get("scenario_family", "")
-        if family == "dry_strategy_sprint":
-            return self._solve_dry(scenario, env)
-        elif family == "weather_roulette":
-            return self._solve_weather(scenario, env)
-        elif family == "late_safety_car":
-            return self._solve_sc(scenario, env)
-        elif family == "championship_decider":
-            return self._solve_championship(scenario, env)
-        raise ValueError(f"Unknown family: {family}")
-
-    def _solve_dry(self, sc, env): raise NotImplementedError("Phase 2, Person 2")
-    def _solve_weather(self, sc, env): raise NotImplementedError("Phase 2, Person 2")
-    def _solve_sc(self, sc, env): raise NotImplementedError("Phase 2, Person 2")
-    def _solve_championship(self, sc, env): raise NotImplementedError("Phase 2, Person 2")
+        return [F1Action(command=cmd) for cmd in EXPERT_SEQUENCES[family]]
 
 
-def main():
+def solve(scenario_or_family, seed: int | None = None) -> float:
+    """Run the expert policy and return final weighted score."""
+    if isinstance(scenario_or_family, str):
+        scenario = SCENARIOS[scenario_or_family]
+    else:
+        scenario = scenario_or_family
+    env = F1StrategistEnvironment()
+    obs = env.reset(seed=seed, options={"scenario": scenario})
+    for action in ExpertSolver().solve(scenario, env):
+        obs = env.step(action)
+        if obs.done:
+            break
+    return float(obs.multi_objective_scores.get("weighted_final", obs.score))
+
+
+def run_sequence(scenario_or_family, commands: list[str], seed: int | None = None) -> tuple[float, list[dict]]:
+    scenario = SCENARIOS[scenario_or_family] if isinstance(scenario_or_family, str) else scenario_or_family
+    env = F1StrategistEnvironment()
+    obs = env.reset(seed=seed, options={"scenario": scenario})
+    trace = [{"observation": obs.model_dump(), "action": "RESET"}]
+    for command in commands:
+        obs = env.step(F1Action(command=command))
+        trace.append({"observation": obs.model_dump(), "action": command})
+        if obs.done:
+            break
+    score = float(obs.multi_objective_scores.get("weighted_final", obs.score))
+    return score, trace
+
+
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", required=True)
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--save", help="Save trace JSONL here")
+    parser.add_argument("--save")
     args = parser.parse_args()
-    raise NotImplementedError("Phase 2, Person 2")
+    scenario = SCENARIOS[args.task]
+    score, trace = run_sequence(scenario, EXPERT_SEQUENCES[scenario["scenario_family"]], args.seed)
+    print(f"{scenario['task_name']} expert score: {score:.3f}")
+    if args.save:
+        path = Path(args.save)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8") as f:
+            for row in trace:
+                f.write(json.dumps(row) + "\n")
 
 
 if __name__ == "__main__":

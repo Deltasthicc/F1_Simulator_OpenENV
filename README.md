@@ -113,26 +113,46 @@ The displayed final score is the weighted combination of the six dimensions, cla
 
 ## Training evidence
 
-Run `python evaluate.py --n-seeds 5` to reproduce the baseline comparison chart at `results/eval_curve.png`. Target numbers:
-
-| scenario | random | untrained Qwen | trained | rule-based expert |
-|---|---|---|---|---|
-| dry_strategy_sprint | ~0.20 | ~0.35 | ≥0.70 | 0.95 |
-| weather_roulette | ~0.20 | ~0.30 | ≥0.65 | 0.95 |
-| late_safety_car | ~0.20 | ~0.40 | ≥0.65 | 0.92 |
-| championship_decider | ~0.18 | ~0.30 | ≥0.55 | 0.90 |
-
-Training uses TRL's `environment_factory` pattern. Each strategic command (`PIT_NOW`, `SET_MODE`, `RADIO_DRIVER`, ...) is a typed method on `F1StrategistTrainingEnv`; the trainer auto-discovers them, builds the tool schema, and runs multi-turn episodes. Reward per episode is the sum of shaped per-step rewards plus the final-state weighted score.
+Run the verified local evaluation to reproduce the baseline comparison chart at
+`results/eval_curve.png`:
 
 ```bash
-# Smoke test on CPU or small GPU
-python train.py --model Qwen/Qwen3-0.6B --max-steps 3 --no-vllm
-
-# Full run on a single RTX 5090
-python train.py --model Qwen/Qwen3-4B --max-steps 500
+python evaluate.py \
+  --model grpo_smoke \
+  --tasks dry_strategy_sprint weather_roulette late_safety_car championship_decider \
+  --n-seeds 2 \
+  --modes random untrained trained expert
 ```
 
-Full reproduction in [`TRAINING.md`](TRAINING.md). GPU server playbook in [`GPU_HANDOFF.md`](GPU_HANDOFF.md).
+Current local smoke numbers:
+
+| scenario | random | untrained | scripted trained-smoke | rule-based expert |
+|---|---:|---:|---:|---:|
+| dry_strategy_sprint | 0.363 | 0.506 | 0.965 | 0.968 |
+| weather_roulette | 0.325 | 0.378 | 0.950 | 0.950 |
+| late_safety_car | 0.313 | 0.420 | 0.935 | 0.935 |
+| championship_decider | 0.423 | 0.305 | 0.865 | 0.965 |
+
+`train.py` has two paths:
+
+- `--backend local-smoke` is the default and is verified in this repo. It exercises
+  the environment, writes TRL-shaped checkpoint artifacts, and produces
+  `results/training_loss_curve.png`.
+- `--backend trl` is the GPU training scaffold for the RTX 5090 handoff. It should
+  be launched only after installing the training stack and setting `HF_TOKEN` in
+  `.env`.
+
+```bash
+# Verified local smoke run
+python train.py --model heuristic --task multi --max-steps 12 --output-dir grpo_smoke
+
+# GPU handoff run, after installing TRAINING.md dependencies on the 5090 box
+python train.py --backend trl --model Qwen/Qwen3-4B --task multi --max-steps 500 \
+  --batch-size 1 --grad-accum 32 --output-dir grpo_v1
+```
+
+Full reproduction in [`TRAINING.md`](TRAINING.md). GPU server playbook in
+[`GPU_HANDOFF.md`](GPU_HANDOFF.md).
 
 ## Visualisation
 

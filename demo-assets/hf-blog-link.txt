@@ -1,1 +1,1 @@
-TODO: populate after publishing the blog draft on HF Hub
+PENDING_PUBLICATION: publish demo-assets/blog-post.md on Hugging Face Hub and replace this line.

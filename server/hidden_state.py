@@ -1,4 +1,5 @@
 """Hidden-state revelation layer for inspection actions."""
+
 from dataclasses import dataclass, field
 
 

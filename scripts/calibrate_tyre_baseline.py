@@ -24,16 +24,17 @@ deterministic and reproducible.
 CLI:
     python scripts/calibrate_tyre_baseline.py
 """
+
 import argparse
 import json
 from pathlib import Path
 
 DEFAULTS = {
-    "soft":   {"pace_delta_s": -0.6, "wear_rate": 0.07,  "wear_penalty_s_per_unit": 1.8},
-    "medium": {"pace_delta_s":  0.0, "wear_rate": 0.045, "wear_penalty_s_per_unit": 1.5},
-    "hard":   {"pace_delta_s": +0.4, "wear_rate": 0.030, "wear_penalty_s_per_unit": 1.2},
-    "inter":  {"pace_delta_s": +1.5, "wear_rate": 0.060, "wear_penalty_s_per_unit": 2.0},
-    "wet":    {"pace_delta_s": +3.5, "wear_rate": 0.050, "wear_penalty_s_per_unit": 2.5},
+    "soft": {"pace_delta_s": -0.6, "wear_rate": 0.07, "wear_penalty_s_per_unit": 1.8},
+    "medium": {"pace_delta_s": 0.0, "wear_rate": 0.045, "wear_penalty_s_per_unit": 1.5},
+    "hard": {"pace_delta_s": +0.4, "wear_rate": 0.030, "wear_penalty_s_per_unit": 1.2},
+    "inter": {"pace_delta_s": +1.5, "wear_rate": 0.060, "wear_penalty_s_per_unit": 2.0},
+    "wet": {"pace_delta_s": +3.5, "wear_rate": 0.050, "wear_penalty_s_per_unit": 2.5},
 }
 
 

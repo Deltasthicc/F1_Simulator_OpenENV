@@ -35,7 +35,7 @@ EXPERT_SEQUENCES = {
         "SET_MODE race",
         "STAY_OUT",
         "REQUEST_FORECAST",
-        "RADIO_DRIVER Inters incoming. Plan to box lap 7.",
+        "RADIO_DRIVER Rain arriving. Inters incoming. Plan to box lap 7.",
         "STAY_OUT",
         "RADIO_DRIVER Box now. Inters.",
         "PIT_NOW inter",
@@ -111,8 +111,12 @@ def solve(scenario_or_family, seed: int | None = None) -> float:
     return float(obs.multi_objective_scores.get("weighted_final", obs.score))
 
 
-def run_sequence(scenario_or_family, commands: list[str], seed: int | None = None) -> tuple[float, list[dict]]:
-    scenario = SCENARIOS[scenario_or_family] if isinstance(scenario_or_family, str) else scenario_or_family
+def run_sequence(
+    scenario_or_family, commands: list[str], seed: int | None = None
+) -> tuple[float, list[dict]]:
+    scenario = (
+        SCENARIOS[scenario_or_family] if isinstance(scenario_or_family, str) else scenario_or_family
+    )
     env = F1StrategistEnvironment()
     obs = env.reset(seed=seed, options={"scenario": scenario})
     trace = [{"observation": obs.model_dump(), "action": "RESET"}]

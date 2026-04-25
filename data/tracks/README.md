@@ -1,54 +1,79 @@
 # data/tracks/
 
-One CSV per track, normalised from the TUMFTM racetrack-database CSVs.
+This folder contains one lightweight CSV centerline per track used by the F1 Strategist simulator.
 
-## Columns
+## Supported CSV schemas
 
-```
-x_m, y_m, w_tr_right_m, w_tr_left_m,
-x_normvec_m, y_normvec_m, alpha_m,
-s_racetraj_m, psi_racetraj_rad, kappa_racetraj_radpm,
-vx_racetraj_mps, ax_racetraj_mps2
-```
+`server/track.py` supports both of these formats:
 
-Used by:
-- `server/track.py` — `(s_racetraj_m, kappa_racetraj_radpm)` for corner detection
-- `server/visualizer.py` — `(x_m, y_m)` for the top-down render
-
-Units: metres for distances, m/s for velocity, m/s² for accel, rad and rad/m for angles.
-
-## Substitution map
-
-The TUMFTM dataset does not include Monaco or Spa. We use geometric proxies and
-override timings from the Kaggle calibration. The naming we use internally is
-the F1 track name; the underlying CSV may come from a different source.
-
-| Internal name | Source CSV from racetrack-database | Reason |
-|---|---|---|
-| Monza        | Hockenheim     | Power-circuit proxy. Timings overridden from Kaggle. |
-| Catalunya    | Catalunya      | Native. |
-| Melbourne    | Melbourne      | Native. (Procedural-generator alternate) |
-| Monaco       | BrandsHatch    | Street-character proxy. Timings overridden. |
-| Spa          | Budapest       | Geometric proxy with weather-prone label. Timings overridden. |
-| Silverstone  | Austin         | Power-balanced proxy. Timings overridden. |
-
-If you find better substitutes (e.g. by manually constructing a Monaco
-centerline), update both this table and `scripts/extract_track_csvs.py`.
-
-## Validation
-
-After running `extract_track_csvs.py`, spot-check each file loads cleanly:
-
-```python
-import pandas as pd
-for t in ["Monza", "Monaco", "Catalunya", "Spa", "Silverstone"]:
-    df = pd.read_csv(f"data/tracks/{t}.csv")
-    print(f"{t}: {len(df)} rows, length {df['s_racetraj_m'].max():.1f} m")
+```csv
+# x_m,y_m,w_tr_right_m,w_tr_left_m
+-0.320123,1.087714,5.739,5.932
 ```
 
-Expected lengths (track-character proxy, NOT real F1 lengths):
-- Hockenheim ≈ 4574 m
-- Catalunya ≈ 4655 m (real Catalunya ≈ 4657 m, very close)
-- BrandsHatch ≈ 3908 m
-- Budapest ≈ 4381 m
-- Austin ≈ 5513 m
+and simpler hand-added centerlines:
+
+```csv
+# x_m,y_m
+-2.794502,3.849079
+```
+
+When width columns are missing or blank, the loader fills `w_tr_right_m` and `w_tr_left_m` with a safe default of `6.0` metres. This is intentional so manually added tracks like Monaco work in the Day-0 simulator without needing full racing-line data.
+
+## What the simulator derives
+
+The CSVs do **not** need precomputed curvature or velocity columns. The loader computes:
+
+- closed-loop track length,
+- cumulative distance around the lap,
+- smoothed curvature,
+- approximate corner clusters,
+- width arrays for future visualisation/track-limit work.
+
+The strategy simulator uses metadata from `data/track_metadata.json` for base lap time, pit-lane loss, safety-car pit loss, track character, and F1/non-F1 flags.
+
+## Current coverage
+
+The current project folder contains 26 tracks, including more than the requested 10-track minimum:
+
+- Austin
+- BrandsHatch
+- Budapest
+- Catalunya
+- Hockenheim
+- IMS
+- Melbourne
+- MexicoCity
+- Monaco
+- Montreal
+- Monza
+- MoscowRaceway
+- Norisring
+- Nuerburgring
+- Oschersleben
+- Sakhir
+- SaoPaulo
+- Sepang
+- Shanghai
+- Silverstone
+- Sochi
+- Spa
+- Spielberg
+- Suzuka
+- YasMarina
+- Zandvoort
+
+`server/generator.py` can procedurally generate variants from the hand-authored families; Person 2 will use those generated scenarios for GRPO/SFT coverage across many tracks.
+
+## Quick validation
+
+From the repo root after installing dependencies:
+
+```powershell
+python - <<'PY'
+from server.track import list_available_tracks, load_track
+for name in list_available_tracks():
+    t = load_track(name)
+    print(f"{name:<16} length={t.length_m:7.1f}m corners={len(t.corners):2d} character={t.track_character}")
+PY
+```

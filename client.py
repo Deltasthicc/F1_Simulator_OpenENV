@@ -4,6 +4,7 @@ F1 Strategist — EnvClient
 Thin subclass of openenv.core.env_client.EnvClient wired for F1 Strategist types.
 Direct port of OpsTwin's client.py shape.
 """
+
 from openenv.core.env_client import EnvClient
 from openenv.core.client_types import StepResult
 
@@ -23,9 +24,9 @@ class F1StrategistEnv(EnvClient[F1Action, F1Observation, F1State]):
                 done=payload.get("done", False),
                 reward=payload.get("reward"),
                 **{
-                    k: v for k, v in obs_data.items()
-                    if k in F1Observation.model_fields
-                    and k not in ("done", "reward")
+                    k: v
+                    for k, v in obs_data.items()
+                    if k in F1Observation.model_fields and k not in ("done", "reward")
                 },
             ),
             reward=payload.get("reward"),
@@ -33,7 +34,4 @@ class F1StrategistEnv(EnvClient[F1Action, F1Observation, F1State]):
         )
 
     def _parse_state(self, payload: dict) -> F1State:
-        return F1State(**{
-            k: v for k, v in payload.items()
-            if k in F1State.model_fields
-        })
+        return F1State(**{k: v for k, v in payload.items() if k in F1State.model_fields})

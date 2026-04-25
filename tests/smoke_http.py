@@ -14,15 +14,21 @@ CLI:
     # Remote
     python tests/smoke_http.py --base-url https://Deltasthic-f1-strategist.hf.space
 """
+
 import argparse
 import json
+import os
+import socket
+import subprocess
 import sys
 import time
 from urllib.request import urlopen, Request
 
 
 def post_json(url: str, payload: dict) -> dict:
-    req = Request(url, data=json.dumps(payload).encode(), headers={"Content-Type": "application/json"})
+    req = Request(
+        url, data=json.dumps(payload).encode(), headers={"Content-Type": "application/json"}
+    )
     with urlopen(req, timeout=30) as r:
         return json.loads(r.read().decode())
 
@@ -30,6 +36,50 @@ def post_json(url: str, payload: dict) -> dict:
 def get_json(url: str) -> dict:
     with urlopen(url, timeout=30) as r:
         return json.loads(r.read().decode())
+
+
+def find_free_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
+
+
+def wait_for_health(base_url: str, timeout_s: float = 45.0) -> None:
+    deadline = time.time() + timeout_s
+    last_error: Exception | None = None
+    while time.time() < deadline:
+        try:
+            h = get_json(f"{base_url}/health")
+            if h.get("status") in {"ok", "healthy"}:
+                return
+        except Exception as exc:
+            last_error = exc
+        time.sleep(0.5)
+    raise RuntimeError(f"server did not become healthy: {last_error}")
+
+
+def start_local_server() -> tuple[str, subprocess.Popen]:
+    port = find_free_port()
+    env = os.environ.copy()
+    env.setdefault("ENABLE_WEB_INTERFACE", "1")
+    proc = subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "uvicorn",
+            "server.app:app",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            str(port),
+        ],
+        env=env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    base_url = f"http://127.0.0.1:{port}"
+    wait_for_health(base_url)
+    return base_url, proc
 
 
 def run(base_url: str) -> int:
@@ -86,14 +136,32 @@ def run(base_url: str) -> int:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--base-url", default="http://localhost:8000")
+    parser.add_argument(
+        "--base-url",
+        default=None,
+        help="Existing server URL. If omitted, the smoke test starts a local server.",
+    )
     args = parser.parse_args()
-    print(f"Smoke testing {args.base_url}")
-    failures = run(args.base_url)
-    if failures:
-        print(f"\n{failures} check(s) failed.")
-        sys.exit(1)
-    print("\nAll 5 checks passed.")
+    proc = None
+    try:
+        base_url = args.base_url
+        if base_url is None:
+            base_url, proc = start_local_server()
+        else:
+            wait_for_health(base_url)
+        print(f"Smoke testing {base_url}")
+        failures = run(base_url)
+        if failures:
+            print(f"\n{failures} check(s) failed.")
+            sys.exit(1)
+        print("\nAll 5 checks passed.")
+    finally:
+        if proc is not None:
+            proc.terminate()
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                proc.kill()
 
 
 if __name__ == "__main__":

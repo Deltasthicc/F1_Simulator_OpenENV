@@ -1,4 +1,5 @@
 """Rule-based opponent cars and stint execution."""
+
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -86,7 +87,12 @@ def step_opponents(opponents: list[Opponent], **ctx) -> None:
     ranked = list(opponents)
     if ego is not None:
         ranked.append(ego)
-    ranked.sort(key=lambda car: (getattr(car, "cumulative_time_s", 0.0), getattr(car, "current_position", 99)))
+    ranked.sort(
+        key=lambda car: (
+            getattr(car, "cumulative_time_s", 0.0),
+            getattr(car, "current_position", 99),
+        )
+    )
     for pos, car in enumerate(ranked, 1):
         car.current_position = pos
 
@@ -111,7 +117,9 @@ def build_opponents_for_scenario(scenario: dict, seed: int) -> list[Opponent]:
                 current_compound=str(raw.get("starting_compound", "medium")),
                 current_tyre_age=int(raw.get("starting_tyre_age", 0)),
                 current_position=int(raw.get("starting_position", 99)),
-                fuel_remaining_kg=float(raw.get("starting_fuel_kg", scenario.get("starting_fuel_kg", 90.0))),
+                fuel_remaining_kg=float(
+                    raw.get("starting_fuel_kg", scenario.get("starting_fuel_kg", 90.0))
+                ),
                 cumulative_time_s=0.0,
             )
         )

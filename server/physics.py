@@ -5,6 +5,7 @@ The functions here intentionally model strategy-scale effects rather than car
 dynamics: compound pace, degradation, fuel mass, dirty air, weather crossover,
 and small deterministic noise. Constants mirror docs/physics-model.md.
 """
+
 from __future__ import annotations
 
 import json
@@ -32,9 +33,9 @@ _TYRE_BASELINE_PATH = _REPO_ROOT / "data" / "tyre_compound_baseline.json"
 # tyre_mult    : multiplier on tyre wear rate
 # fuel_mult    : multiplier on fuel burn rate
 MODE_TABLE: dict[str, dict[str, float]] = {
-    "push":      {"pace_delta_s": -0.4, "tyre_mult": 1.5, "fuel_mult": 1.20},
-    "race":      {"pace_delta_s":  0.0, "tyre_mult": 1.0, "fuel_mult": 1.00},
-    "conserve":  {"pace_delta_s": +0.6, "tyre_mult": 0.7, "fuel_mult": 0.90},
+    "push": {"pace_delta_s": -0.4, "tyre_mult": 1.5, "fuel_mult": 1.20},
+    "race": {"pace_delta_s": 0.0, "tyre_mult": 1.0, "fuel_mult": 1.00},
+    "conserve": {"pace_delta_s": +0.6, "tyre_mult": 0.7, "fuel_mult": 0.90},
     "fuel_save": {"pace_delta_s": +0.4, "tyre_mult": 0.85, "fuel_mult": 0.70},
     "tyre_save": {"pace_delta_s": +0.5, "tyre_mult": 0.6, "fuel_mult": 0.95},
 }
@@ -43,10 +44,10 @@ DEFAULT_MODE = "race"
 
 # Track-character bucket → tyre-wear multiplier (hand-curated).
 TRACK_TYRE_MULTIPLIER: dict[str, float] = {
-    "power":         1.0,
-    "balanced":      1.1,
-    "downforce":     1.3,
-    "street":        0.7,
+    "power": 1.0,
+    "balanced": 1.1,
+    "downforce": 1.3,
+    "street": 0.7,
     "weather_prone": 1.2,
 }
 
@@ -54,31 +55,31 @@ TRACK_TYRE_MULTIPLIER: dict[str, float] = {
 # Per-track fuel burn (kg/lap) at race-mode pace. Hand-curated approximations;
 # Person 2's calibration step refines via Kaggle later.
 FUEL_BURN_PER_LAP: dict[str, float] = {
-    "Austin":        1.85,
-    "BrandsHatch":   1.55,
-    "Budapest":      1.65,
-    "Catalunya":     1.75,
-    "Hockenheim":    1.70,
-    "IMS":           1.75,
-    "Melbourne":     1.75,
-    "MexicoCity":    1.55,  # high altitude → less air → less fuel
-    "Montreal":      1.85,
-    "Monza":         1.95,
+    "Austin": 1.85,
+    "BrandsHatch": 1.55,
+    "Budapest": 1.65,
+    "Catalunya": 1.75,
+    "Hockenheim": 1.70,
+    "IMS": 1.75,
+    "Melbourne": 1.75,
+    "MexicoCity": 1.55,  # high altitude → less air → less fuel
+    "Montreal": 1.85,
+    "Monza": 1.95,
     "MoscowRaceway": 1.75,
-    "Norisring":     1.30,  # very short lap
-    "Nuerburgring":  1.85,
-    "Oschersleben":  1.65,
-    "Sakhir":        1.85,
-    "SaoPaulo":      1.70,
-    "Sepang":        1.80,
-    "Shanghai":      1.85,
-    "Silverstone":   1.85,
-    "Sochi":         1.80,
-    "Spa":           1.95,  # long full-throttle straights
-    "Spielberg":     1.55,
-    "Suzuka":        1.85,
-    "YasMarina":     1.70,
-    "Zandvoort":     1.55,
+    "Norisring": 1.30,  # very short lap
+    "Nuerburgring": 1.85,
+    "Oschersleben": 1.65,
+    "Sakhir": 1.85,
+    "SaoPaulo": 1.70,
+    "Sepang": 1.80,
+    "Shanghai": 1.85,
+    "Silverstone": 1.85,
+    "Sochi": 1.80,
+    "Spa": 1.95,  # long full-throttle straights
+    "Spielberg": 1.55,
+    "Suzuka": 1.85,
+    "YasMarina": 1.70,
+    "Zandvoort": 1.55,
 }
 _DEFAULT_FUEL_BURN = 1.75
 
@@ -91,17 +92,18 @@ def _load_tyre_baseline() -> dict:
             return json.load(f)
     # Fallback (also serves as the schema reference)
     return {
-        "soft":   {"pace_delta_s": -0.6, "wear_rate": 0.07,  "wear_penalty_s_per_unit": 1.8},
-        "medium": {"pace_delta_s":  0.0, "wear_rate": 0.045, "wear_penalty_s_per_unit": 1.5},
-        "hard":   {"pace_delta_s": +0.4, "wear_rate": 0.030, "wear_penalty_s_per_unit": 1.2},
-        "inter":  {"pace_delta_s": +1.5, "wear_rate": 0.060, "wear_penalty_s_per_unit": 2.0},
-        "wet":    {"pace_delta_s": +3.5, "wear_rate": 0.050, "wear_penalty_s_per_unit": 2.5},
+        "soft": {"pace_delta_s": -0.6, "wear_rate": 0.07, "wear_penalty_s_per_unit": 1.8},
+        "medium": {"pace_delta_s": 0.0, "wear_rate": 0.045, "wear_penalty_s_per_unit": 1.5},
+        "hard": {"pace_delta_s": +0.4, "wear_rate": 0.030, "wear_penalty_s_per_unit": 1.2},
+        "inter": {"pace_delta_s": +1.5, "wear_rate": 0.060, "wear_penalty_s_per_unit": 2.0},
+        "wet": {"pace_delta_s": +3.5, "wear_rate": 0.050, "wear_penalty_s_per_unit": 2.5},
     }
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Phase 1 — minimal lap-time model (v0)
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def compute_lap_time_v0(
     track: "Track",
@@ -134,6 +136,7 @@ def compute_lap_time_v0(
 # ──────────────────────────────────────────────────────────────────────────────
 # Full physics model
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def compute_lap_time(
     track: "Track",

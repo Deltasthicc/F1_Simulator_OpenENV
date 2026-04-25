@@ -10,13 +10,13 @@ This document is your day-by-day work queue. Tick the boxes as you go.
 
 ## Day 0 — Bootstrap (parallel with Person 1)
 
-- [ ] Clone repo, `pip install -e .` works
-- [ ] Read [`docs/architecture.md`](architecture.md) end-to-end (you need to know the action space and observation schema)
-- [ ] Read [`docs/reward-model.md`](reward-model.md) end-to-end (this is yours to implement)
-- [ ] Read [`TRAINING.md`](../TRAINING.md) end-to-end
-- [ ] Read [`GPU_HANDOFF.md`](../GPU_HANDOFF.md) end-to-end
-- [ ] **Run `scripts/calibrate_opponent_pace.py`** — produces `data/opponent_pace_calibration.json` from `archive.zip`. Validate output JSON.
-- [ ] **Run `scripts/calibrate_tyre_baseline.py`** — produces `data/tyre_compound_baseline.json`. Validate output JSON.
+- [x] Clone repo, `pip install -e .` works
+- [x] Read [`docs/architecture.md`](architecture.md) end-to-end (you need to know the action space and observation schema)
+- [x] Read [`docs/reward-model.md`](reward-model.md) end-to-end (this is yours to implement)
+- [x] Read [`TRAINING.md`](../TRAINING.md) end-to-end
+- [x] Read [`GPU_HANDOFF.md`](../GPU_HANDOFF.md) end-to-end
+- [x] **Run `scripts/calibrate_opponent_pace.py`** — produces `data/opponent_pace_calibration.json` from `archive.zip`. Validate output JSON.
+- [x] **Run `scripts/calibrate_tyre_baseline.py`** — produces `data/tyre_compound_baseline.json`. Validate output JSON.
 - [ ] **Create the empty HF Space** via:
   ```bash
   huggingface-cli login
@@ -74,10 +74,10 @@ def compute_multi_objective_scores(
 **Strict no-LLM, no-random rule.** All six functions are pure and deterministic.
 
 Unit test (`tests/test_scoring.py`):
-- [ ] Zero-issue case → `weighted_final` ≈ 0.65 (six dims at 0.65 each gives ~0.65 weighted)
-- [ ] Perfect case → `weighted_final` ≈ 0.99
-- [ ] DNF case → `weighted_final` ≤ 0.30
-- [ ] Each dimension can be tested in isolation
+- [x] Zero-issue case → `weighted_final` ≈ 0.65 (six dims at 0.65 each gives ~0.65 weighted)
+- [x] Perfect case → `weighted_final` ≈ 0.99
+- [x] DNF case → `weighted_final` ≤ 0.30
+- [x] Each dimension can be tested in isolation
 
 ### 1.2 Expert solver — `baselines/expert_solver.py`
 
@@ -407,11 +407,11 @@ Walk through [`PRE_PUSH_CHECKLIST.md`](../PRE_PUSH_CHECKLIST.md) item by item be
 
 ## Definition of done (Person 2)
 
-- [ ] All six scoring functions implemented and unit-tested
-- [ ] Expert solver scores ≥ 0.92 on all four scenarios
+- [x] All six scoring functions implemented and unit-tested
+- [x] Expert solver scores ≥ 0.92 on all four scenarios
 - [ ] At least one GRPO reward curve from a 500-step run on the 5090
 - [ ] Trained model published to `Deltasthic/f1-strategist-qwen3-4b-grpo`
-- [ ] `results/eval_curve.png`, `eval_summary.json`, `training_loss_curve.png` committed
+- [x] `results/eval_curve.png`, `eval_summary.json`, `training_loss_curve.png` generated locally
 - [ ] HF Space deployed and serving `/reset` correctly
 - [ ] Colab notebook runs end-to-end on Free T4
 - [ ] Blog post published, video uploaded, all three links saved

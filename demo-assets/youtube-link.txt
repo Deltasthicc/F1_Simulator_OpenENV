@@ -1,1 +1,1 @@
-TODO: populate after uploading video to YouTube (unlisted is fine)
+PENDING_UPLOAD: upload the demo video and replace this line with the YouTube URL.

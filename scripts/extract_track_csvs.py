@@ -28,6 +28,7 @@ CLI:
     python scripts/extract_track_csvs.py --source /path/to/racetrack-database-master
     python scripts/extract_track_csvs.py --only Monza Spa Silverstone   # subset
 """
+
 import argparse
 import shutil
 import sys
@@ -92,7 +93,7 @@ def main():
 
     print(f"\nCopied {n_copied} track(s) into {dst_dir}/")
     print(
-        "Next: python -c \"from server.track import load_track; "
+        'Next: python -c "from server.track import load_track; '
         "print(load_track('Monza').length_m)\""
     )
 

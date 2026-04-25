@@ -42,9 +42,16 @@ class PostmortemMemory:
     def classify_failure(cls, audit_trail: list, final_scores: dict) -> str:
         actions = [str(item.get("action", "")).strip() for item in audit_trail]
         verbs = [action.split()[0].upper() for action in actions if action]
-        pit_laps = [int(item.get("lap", 0)) for item in audit_trail if str(item.get("action", "")).upper().startswith("PIT_NOW")]
+        pit_laps = [
+            int(item.get("lap", 0))
+            for item in audit_trail
+            if str(item.get("action", "")).upper().startswith("PIT_NOW")
+        ]
 
-        if final_scores.get("fuel_management", 1.0) <= 0.05 or final_scores.get("final_fuel_kg", 1.0) < 0:
+        if (
+            final_scores.get("fuel_management", 1.0) <= 0.05
+            or final_scores.get("final_fuel_kg", 1.0) < 0
+        ):
             return "fuel_underburn"
         if _has_panic_pit(pit_laps):
             return "panic_pit"
@@ -52,7 +59,9 @@ class PostmortemMemory:
             return "thrashing"
         if final_scores.get("comms_quality", 1.0) < 0.5:
             return "comms_forgotten"
-        if "REQUEST_FORECAST" in verbs and not any(a.upper().startswith("PIT_NOW INTER") for a in actions):
+        if "REQUEST_FORECAST" in verbs and not any(
+            a.upper().startswith("PIT_NOW INTER") for a in actions
+        ):
             return "late_weather_call"
         if "ASSESS_UNDERCUT_WINDOW" not in verbs:
             return "missed_undercut"

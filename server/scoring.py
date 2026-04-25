@@ -26,7 +26,9 @@ def compute_race_result(
     if not score and finishing_position == target_position + 1:
         score = 0.35
     if rival_finishing_position is not None:
-        score = min(score, 0.65) if finishing_position > rival_finishing_position else max(score, 0.95)
+        score = (
+            min(score, 0.65) if finishing_position > rival_finishing_position else max(score, 0.95)
+        )
     return _clamp01(score)
 
 
@@ -43,7 +45,9 @@ def compute_strategic_decisions(
     in_window = any(lo <= int(p.get("lap", 0)) <= hi for p in pit_decisions)
     if not in_window:
         return 0.25
-    precondition = forecast_called_before_pit or undercut_assessed_before_pit or bool(inspection_calls)
+    precondition = (
+        forecast_called_before_pit or undercut_assessed_before_pit or bool(inspection_calls)
+    )
     return 1.0 if precondition else 0.65
 
 
@@ -54,7 +58,9 @@ def compute_tyre_management(
     track_character: str,
 ) -> float:
     health_floor = 0.30 if track_character == "street" else 0.40
-    health_score = 1.0 if final_tyre_health >= health_floor else max(0.0, final_tyre_health / health_floor)
+    health_score = (
+        1.0 if final_tyre_health >= health_floor else max(0.0, final_tyre_health / health_floor)
+    )
     compound_score = 1.0 if compound_rule_satisfied else 0.0
     return _clamp01(0.55 * compound_score + 0.45 * health_score)
 
@@ -79,7 +85,9 @@ def compute_comms_quality(
     required = [str(x).lower() for x in triggered_comms_events if x]
     if not required:
         return 1.0
-    text = " ".join(str(call.get("message", call)).lower() for call in radio_calls_made + pit_wall_calls)
+    text = " ".join(
+        str(call.get("message", call)).lower() for call in radio_calls_made + pit_wall_calls
+    )
     hits = sum(1 for needle in required if needle in text)
     if hits == 0 and radio_calls_made:
         hits = 1
@@ -94,7 +102,11 @@ def compute_operational_efficiency(
     total_laps: int,
     steps_used: int,
 ) -> float:
-    pit_score = 1.0 if n_pit_stops == target_n_pits else max(0.0, 1.0 - 0.45 * abs(n_pit_stops - target_n_pits))
+    pit_score = (
+        1.0
+        if n_pit_stops == target_n_pits
+        else max(0.0, 1.0 - 0.45 * abs(n_pit_stops - target_n_pits))
+    )
     penalty = 0.12 * invalid_actions + 0.18 * harmful_actions
     if steps_used > total_laps + 8:
         penalty += min(0.20, 0.02 * (steps_used - total_laps - 8))
@@ -107,14 +119,20 @@ def compute_multi_objective_scores(**kwargs) -> dict:
     inspection_calls = kwargs.get("inspection_calls", {})
     scenario_family = kwargs.get("scenario_family", "")
     criteria = kwargs.get("success_criteria", {}) or {}
-    optimal_window = tuple(criteria.get("optimal_pit_window", kwargs.get("optimal_pit_window", (1, 999))))
+    optimal_window = tuple(
+        criteria.get("optimal_pit_window", kwargs.get("optimal_pit_window", (1, 999)))
+    )
     required_compound = criteria.get("required_compound")
     required_actions = set(criteria.get("required_actions", []))
     action_verbs = set(kwargs.get("action_verbs", []))
 
     first_pit_lap = min((int(p.get("lap", 999)) for p in pit_decisions), default=999)
-    forecast_before = any(lap <= first_pit_lap for lap in inspection_calls.get("REQUEST_FORECAST", []))
-    undercut_before = any(lap <= first_pit_lap for lap in inspection_calls.get("ASSESS_UNDERCUT_WINDOW", []))
+    forecast_before = any(
+        lap <= first_pit_lap for lap in inspection_calls.get("REQUEST_FORECAST", [])
+    )
+    undercut_before = any(
+        lap <= first_pit_lap for lap in inspection_calls.get("ASSESS_UNDERCUT_WINDOW", [])
+    )
 
     race = compute_race_result(
         kwargs.get("starting_position", 99),
@@ -150,7 +168,9 @@ def compute_multi_objective_scores(**kwargs) -> dict:
         kwargs.get("stints", []),
         kwargs.get("track_character", "balanced"),
     )
-    if required_compound and not any(stint.get("compound") == required_compound for stint in kwargs.get("stints", [])):
+    if required_compound and not any(
+        stint.get("compound") == required_compound for stint in kwargs.get("stints", [])
+    ):
         tyre = min(tyre, 0.20)
     fuel = compute_fuel_management(
         kwargs.get("final_fuel_kg", 0.0),
@@ -199,7 +219,8 @@ def _scenario_strategy_adjustment(
     lo, hi = optimal_window
     tolerance = 2 if scenario_family in {"dry_strategy_sprint", "weather_roulette"} else 0
     matching_pits = [
-        p for p in pit_decisions
+        p
+        for p in pit_decisions
         if lo <= int(p.get("lap", 0)) <= hi + tolerance
         and (required_compound is None or p.get("compound") == required_compound)
     ]
@@ -212,7 +233,9 @@ def _scenario_strategy_adjustment(
         held_gap = "HOLD_GAP" in action_verbs or not required_actions
         return 1.0 if matching_pits and under_sc and held_gap else (0.50 if matching_pits else 0.15)
     if scenario_family == "championship_decider":
-        inspected = forecast_before and any("CHECK_OPPONENT_STRATEGY" in k for k in action_verbs | set())
+        inspected = forecast_before and any(
+            "CHECK_OPPONENT_STRATEGY" in k for k in action_verbs | set()
+        )
         return 1.0 if matching_pits and inspected else (0.65 if matching_pits else base)
     return base
 

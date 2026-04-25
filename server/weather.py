@@ -1,4 +1,5 @@
 """Seeded weather and safety-car schedules for the race strategist env."""
+
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -8,13 +9,14 @@ import numpy as np
 class WeatherState:
     air_temp_c: float = 25.0
     track_temp_c: float = 35.0
-    rain_intensity: float = 0.0   # 0.0=dry, 0.3=light, 0.7=heavy
-    surface_state: str = "dry"    # "dry" | "damp" | "wet"
+    rain_intensity: float = 0.0  # 0.0=dry, 0.3=light, 0.7=heavy
+    surface_state: str = "dry"  # "dry" | "damp" | "wet"
 
 
 @dataclass
 class ProbCone:
     """Forecast for a future lap. Both bounds are rain_intensity values."""
+
     lap: int
     lower: float
     upper: float
@@ -24,7 +26,7 @@ class ProbCone:
 @dataclass
 class SCEvent:
     lap: int
-    sc_type: str   # "full_sc" | "vsc"
+    sc_type: str  # "full_sc" | "vsc"
     duration_laps: int
 
 

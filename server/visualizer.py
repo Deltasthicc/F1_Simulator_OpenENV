@@ -23,7 +23,9 @@ def render_rollout(rollout_jsonl_path: Path, output_path: Path, fmt: str = "gif"
     if not frames:
         raise ValueError(f"No frames found in {rollout_jsonl_path}")
 
-    track_name = frames[0].get("track_name") or frames[0].get("observation", {}).get("track_name") or "Monza"
+    track_name = (
+        frames[0].get("track_name") or frames[0].get("observation", {}).get("track_name") or "Monza"
+    )
     if "observation" in frames[0]:
         first_obs = frames[0]["observation"]
         track_name = first_obs.get("track_name", track_name)
@@ -43,7 +45,7 @@ def render_rollout(rollout_jsonl_path: Path, output_path: Path, fmt: str = "gif"
     ax_track.set_aspect("equal", adjustable="box")
     ax_track.axis("off")
     ax_track.set_title(f"{track.name} rollout", fontsize=12)
-    ego_dot, = ax_track.plot([], [], "o", color="#e10600", markersize=8, label="Ego")
+    (ego_dot,) = ax_track.plot([], [], "o", color="#e10600", markersize=8, label="Ego")
     opp_dots = ax_track.scatter([], [], s=28, c="#1f77b4")
     label = ax_track.text(0.02, 0.98, "", transform=ax_track.transAxes, va="top", fontsize=9)
 
@@ -80,10 +82,10 @@ def render_rollout(rollout_jsonl_path: Path, output_path: Path, fmt: str = "gif"
         )
 
         colors = np.zeros((1, total_laps, 3))
-        for l in range(total_laps):
-            frame_obs = _nearest_obs_for_lap(frames, l + 1)
+        for lap_idx in range(total_laps):
+            frame_obs = _nearest_obs_for_lap(frames, lap_idx + 1)
             rain = frame_obs.get("weather_current", {}).get("rain_intensity", 0.0)
-            colors[0, l, :] = [0.1, 0.45 + 0.4 * rain, 0.15 + 0.75 * rain]
+            colors[0, lap_idx, :] = [0.1, 0.45 + 0.4 * rain, 0.15 + 0.75 * rain]
         weather_bar.set_data(colors)
 
         pit_laps = [
@@ -91,7 +93,9 @@ def render_rollout(rollout_jsonl_path: Path, output_path: Path, fmt: str = "gif"
             for f in frames[: i + 1]
             if str(_obs_from_frame(f).get("message", "")).lower().startswith("box")
         ]
-        pit_marks.set_offsets(np.array([[p, 0.72] for p in pit_laps]) if pit_laps else np.empty((0, 2)))
+        pit_marks.set_offsets(
+            np.array([[p, 0.72] for p in pit_laps]) if pit_laps else np.empty((0, 2))
+        )
         return ego_dot, opp_dots, label, weather_bar, pit_marks
 
     anim = FuncAnimation(fig, update, frames=len(frames), interval=500, blit=False)
@@ -121,7 +125,12 @@ def build_gradio_panel(env):
         gr.Markdown("# F1 Strategist")
         with gr.Row():
             task = gr.Dropdown(
-                choices=["dry_strategy_sprint", "weather_roulette", "late_safety_car", "championship_decider"],
+                choices=[
+                    "dry_strategy_sprint",
+                    "weather_roulette",
+                    "late_safety_car",
+                    "championship_decider",
+                ],
                 value="dry_strategy_sprint",
                 label="Scenario",
             )
@@ -152,7 +161,10 @@ def _obs_from_frame(frame: dict) -> dict:
 
 
 def _max_laps(frames: list[dict]) -> int:
-    return max(int(_obs_from_frame(f).get("total_laps", _obs_from_frame(f).get("current_lap", 1))) for f in frames)
+    return max(
+        int(_obs_from_frame(f).get("total_laps", _obs_from_frame(f).get("current_lap", 1)))
+        for f in frames
+    )
 
 
 def _nearest_obs_for_lap(frames: list[dict], lap: int) -> dict:

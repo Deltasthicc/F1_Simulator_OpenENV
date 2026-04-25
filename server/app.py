@@ -10,6 +10,7 @@ every /step sees total_issues=0 and flips done=True on step 1.
 True per-client concurrency is provided via Docker mode or the MCP WebSocket.
 This is the same fix we landed in OpsTwin V1 — see GPU_HANDOFF.md history.
 """
+
 import os
 from openenv.core.env_server import create_fastapi_app
 
@@ -37,6 +38,7 @@ if os.environ.get("ENABLE_WEB_INTERFACE") == "1":
 def main():
     """Entry point for `uv run server` / pyproject [project.scripts]."""
     import uvicorn
+
     port = int(os.environ.get("F1_STRATEGIST_PORT", 8000))
     uvicorn.run("server.app:app", host="0.0.0.0", port=port)
 

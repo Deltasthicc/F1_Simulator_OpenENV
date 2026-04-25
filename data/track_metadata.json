@@ -2,10 +2,35 @@
   "_meta": {
     "schema_version": 1,
     "comment": "Hand-curated track metadata. base_lap_time_s is a starting estimate; calibrate_opponent_pace.py overrides with Kaggle-derived medians where available. Character labels drive tyre-wear multipliers in physics.py and are NOT derived from data. drs_zones use distance_m along the centerline (start, end); empty list = unknown / Phase 5 fill-in.",
-    "character_options": ["power", "balanced", "downforce", "street", "weather_prone"],
-    "f1_calendar_2024": ["Sakhir", "Sochi", "Melbourne", "Suzuka", "Shanghai", "Catalunya", "Spielberg", "Silverstone", "Budapest", "Spa", "Monza", "Singapore", "Austin", "MexicoCity", "SaoPaulo", "YasMarina", "Zandvoort", "Sakhir"]
+    "character_options": [
+      "power",
+      "balanced",
+      "downforce",
+      "street",
+      "weather_prone"
+    ],
+    "f1_calendar_2024": [
+      "Sakhir",
+      "Sochi",
+      "Melbourne",
+      "Suzuka",
+      "Shanghai",
+      "Monaco",
+      "Catalunya",
+      "Spielberg",
+      "Silverstone",
+      "Budapest",
+      "Spa",
+      "Monza",
+      "Singapore",
+      "Austin",
+      "MexicoCity",
+      "SaoPaulo",
+      "YasMarina",
+      "Zandvoort",
+      "Sakhir"
+    ]
   },
-
   "Austin": {
     "character": "balanced",
     "base_lap_time_s": 96.0,
@@ -85,6 +110,16 @@
     "country": "Mexico",
     "is_f1": true,
     "comment": "Autodromo Hermanos Rodriguez. High altitude reduces aero load AND engine power."
+  },
+  "Monaco": {
+    "character": "street",
+    "base_lap_time_s": 73.2,
+    "pit_loss_green_s": 18.0,
+    "pit_loss_sc_s": 5.5,
+    "drs_zones": [],
+    "country": "Monaco",
+    "is_f1": true,
+    "comment": "Circuit de Monaco. Manually added two-column centerline; width defaults are filled by server.track."
   },
   "Montreal": {
     "character": "power",

@@ -83,7 +83,9 @@ DRY_STRATEGY_SPRINT: dict = {
     "sc_archetype": "none",
     "issues": {
         "race_result": [{"goal": "finish_at_least_p4", "points": 0.20}],
-        "tyre_management": [{"constraint": "use_two_dry_compounds_and_health_gt_40", "points": 0.15}],
+        "tyre_management": [
+            {"constraint": "use_two_dry_compounds_and_health_gt_40", "points": 0.15}
+        ],
         "fuel_management": [{"constraint": "finish_with_0_5kg_margin", "points": 0.05}],
         "strategic_decisions": [
             {
@@ -95,7 +97,9 @@ DRY_STRATEGY_SPRINT: dict = {
             {"decision": "gain_one_position", "points": 0.20},
             {"decision": "exactly_one_stop", "points": 0.10},
         ],
-        "pending_comms": [{"trigger": "pit_call", "audience": "driver", "required": True, "points": 0.10}],
+        "pending_comms": [
+            {"trigger": "pit_call", "audience": "driver", "required": True, "points": 0.10}
+        ],
     },
     "success_criteria": {
         "target_position": 4,
@@ -126,7 +130,11 @@ DRY_STRATEGY_SPRINT: dict = {
     ],
     "radio_inbox": [
         {"id": "R-001", "from": "race_engineer", "message": "P4. Tyre window opens lap 5."},
-        {"id": "R-002", "from": "team_principal", "message": "Push for podium without burning the tyres."},
+        {
+            "id": "R-002",
+            "from": "team_principal",
+            "message": "Push for podium without burning the tyres.",
+        },
     ],
     "memory_hint_tags": ["undercut", "monza", "one_stop"],
 }
@@ -220,7 +228,9 @@ WEATHER_ROULETTE: dict = {
             {"decision": "forecast_before_pit", "points": 0.15},
             {"decision": "finish_without_dnf_and_max_two_stops", "points": 0.10},
         ],
-        "pending_comms": [{"trigger": "rain_pit", "audience": "driver", "required": True, "points": 0.10}],
+        "pending_comms": [
+            {"trigger": "rain_pit", "audience": "driver", "required": True, "points": 0.10}
+        ],
     },
     "success_criteria": {
         "target_position": 5,
@@ -235,7 +245,10 @@ WEATHER_ROULETTE: dict = {
         "tyre_health_min": 0.25,
     },
     "hidden_state": {
-        "true_tyre_curve": {"medium": [1.0, 0.95, 0.90, 0.86, 0.81, 0.76, 0.70], "inter": [1.0, 0.93, 0.86, 0.80, 0.74, 0.68]},
+        "true_tyre_curve": {
+            "medium": [1.0, 0.95, 0.90, 0.86, 0.81, 0.76, 0.70],
+            "inter": [1.0, 0.93, 0.86, 0.80, 0.74, 0.68],
+        },
         "opponent_strategies": {
             "1": [{"compound": "inter", "planned_end_lap": 7}],
             "63": [{"compound": "medium", "planned_end_lap": 12}],
@@ -244,10 +257,20 @@ WEATHER_ROULETTE: dict = {
         "undercut_threshold_laps": 3,
     },
     "dynamic_events": [
-        {"lap": 6, "type": "weather", "desc": "Drizzle begins around the back half of the circuit."},
+        {
+            "lap": 6,
+            "type": "weather",
+            "desc": "Drizzle begins around the back half of the circuit.",
+        },
         {"lap": 7, "type": "weather", "desc": "Rain peak arrives. Slicks are now slow."},
     ],
-    "radio_inbox": [{"id": "R-101", "from": "race_engineer", "message": "Forecast is uncertain; request updated weather before committing."}],
+    "radio_inbox": [
+        {
+            "id": "R-101",
+            "from": "race_engineer",
+            "message": "Forecast is uncertain; request updated weather before committing.",
+        }
+    ],
     "memory_hint_tags": ["rain", "spa", "intermediate"],
 }
 
@@ -328,7 +351,9 @@ LATE_SAFETY_CAR: dict = {
             {"decision": "hold_gap_during_sc_window", "points": 0.05},
             {"decision": "exactly_one_stop", "points": 0.15},
         ],
-        "pending_comms": [{"trigger": "safety_car", "audience": "driver", "required": True, "points": 0.10}],
+        "pending_comms": [
+            {"trigger": "safety_car", "audience": "driver", "required": True, "points": 0.10}
+        ],
     },
     "success_criteria": {
         "target_position": 3,
@@ -342,7 +367,10 @@ LATE_SAFETY_CAR: dict = {
         "tyre_health_min": 0.30,
     },
     "hidden_state": {
-        "true_tyre_curve": {"medium": [1.0, 0.96, 0.92, 0.88, 0.84, 0.80, 0.76, 0.72], "hard": [1.0, 0.98, 0.96, 0.94, 0.92]},
+        "true_tyre_curve": {
+            "medium": [1.0, 0.96, 0.92, 0.88, 0.84, 0.80, 0.76, 0.72],
+            "hard": [1.0, 0.98, 0.96, 0.94, 0.92],
+        },
         "opponent_strategies": {
             "4": [{"compound": "hard", "planned_end_lap": 8}],
             "11": [{"compound": "hard", "planned_end_lap": 6}],
@@ -351,8 +379,20 @@ LATE_SAFETY_CAR: dict = {
         "fuel_burn_actual": 1.50,
         "undercut_threshold_laps": 4,
     },
-    "dynamic_events": [{"lap": 8, "type": "safety_car", "desc": "Full safety car deployed after an incident at Portier."}],
-    "radio_inbox": [{"id": "R-201", "from": "race_engineer", "message": "SC probability elevated from lap 7 onward."}],
+    "dynamic_events": [
+        {
+            "lap": 8,
+            "type": "safety_car",
+            "desc": "Full safety car deployed after an incident at Portier.",
+        }
+    ],
+    "radio_inbox": [
+        {
+            "id": "R-201",
+            "from": "race_engineer",
+            "message": "SC probability elevated from lap 7 onward.",
+        }
+    ],
     "memory_hint_tags": ["safety_car", "monaco", "hold_gap"],
 }
 
@@ -419,14 +459,26 @@ CHAMPIONSHIP_DECIDER: dict = {
         },
     ],
     "weather_archetype": "mixed_conditions",
-    "weather_seed_overrides": {"forecast_uncertainty": 0.25, "rain_start_lap": 9, "rain_peak_intensity": 0.25},
+    "weather_seed_overrides": {
+        "forecast_uncertainty": 0.25,
+        "rain_start_lap": 9,
+        "rain_peak_intensity": 0.25,
+    },
     "sc_archetype": "none",
     "issues": {
         "race_result": [{"goal": "finish_p3_and_ahead_of_10", "points": 0.40}],
         "tyre_management": [{"constraint": "compound_rule_and_health_gt_30", "points": 0.15}],
         "fuel_management": [{"constraint": "finish_with_0_5kg_margin", "points": 0.05}],
-        "strategic_decisions": [{"decision": "cover_rival_pit_and_check_forecast", "valid_window": [7, 10], "points": 0.20}],
-        "pending_comms": [{"trigger": "rival_cover", "audience": "driver", "required": True, "points": 0.15}],
+        "strategic_decisions": [
+            {
+                "decision": "cover_rival_pit_and_check_forecast",
+                "valid_window": [7, 10],
+                "points": 0.20,
+            }
+        ],
+        "pending_comms": [
+            {"trigger": "rival_cover", "audience": "driver", "required": True, "points": 0.15}
+        ],
         "operational_efficiency": [{"constraint": "max_two_stops_no_dnf", "points": 0.05}],
     },
     "success_criteria": {
@@ -441,13 +493,27 @@ CHAMPIONSHIP_DECIDER: dict = {
         "tyre_health_min": 0.30,
     },
     "hidden_state": {
-        "true_tyre_curve": {"hard": [1.0, 0.96, 0.93, 0.89, 0.85, 0.81, 0.77, 0.73, 0.69], "medium": [1.0, 0.94, 0.89, 0.84, 0.79, 0.74]},
-        "opponent_strategies": {"10": [{"compound": "soft", "planned_end_lap": 7}], "44": [{"compound": "soft", "planned_end_lap": 8}]},
+        "true_tyre_curve": {
+            "hard": [1.0, 0.96, 0.93, 0.89, 0.85, 0.81, 0.77, 0.73, 0.69],
+            "medium": [1.0, 0.94, 0.89, 0.84, 0.79, 0.74],
+        },
+        "opponent_strategies": {
+            "10": [{"compound": "soft", "planned_end_lap": 7}],
+            "44": [{"compound": "soft", "planned_end_lap": 8}],
+        },
         "fuel_burn_actual": 1.75,
         "undercut_threshold_laps": 3,
     },
-    "dynamic_events": [{"lap": 7, "type": "rival_pit", "desc": "#10 boxes for softs; cover window is open."}],
-    "radio_inbox": [{"id": "R-301", "from": "race_engineer", "message": "Championship rival #10 is the priority."}],
+    "dynamic_events": [
+        {"lap": 7, "type": "rival_pit", "desc": "#10 boxes for softs; cover window is open."}
+    ],
+    "radio_inbox": [
+        {
+            "id": "R-301",
+            "from": "race_engineer",
+            "message": "Championship rival #10 is the priority.",
+        }
+    ],
     "memory_hint_tags": ["rival", "championship", "catalunya"],
 }
 

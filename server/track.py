@@ -27,14 +27,13 @@ Track-character options drive tyre-wear multipliers in physics.py:
     "street"        — low speed, less wear (BrandsHatch, Norisring; Monaco proxy)
     "weather_prone" — variable conditions weighting (Spa)
 """
+
 from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
-from typing import Optional
-
 import numpy as np
 import pandas as pd
 
@@ -48,21 +47,22 @@ _PACE_CALIBRATION_PATH = _REPO_ROOT / "data" / "opponent_pace_calibration.json"
 @dataclass(frozen=True)
 class Corner:
     """A detected corner along the centerline."""
-    name: str          # "T1", "T2", ...
+
+    name: str  # "T1", "T2", ...
     distance_m: float  # along the centerline from the start point
-    radius_m: float    # 1 / max(curvature) within the corner segment
+    radius_m: float  # 1 / max(curvature) within the corner segment
     direction: str = "?"  # "L" | "R" | "?" (signed curvature not yet computed)
 
 
 @dataclass
 class Track:
     name: str
-    centerline: np.ndarray            # shape (N, 2) in metres
-    width_right: np.ndarray           # shape (N,) metres
-    width_left: np.ndarray            # shape (N,) metres
-    length_m: float                   # total along-track distance
-    distance_m: np.ndarray            # cumulative distance per centerline point, shape (N,)
-    curvature: np.ndarray             # absolute curvature in rad/m, shape (N,)
+    centerline: np.ndarray  # shape (N, 2) in metres
+    width_right: np.ndarray  # shape (N,) metres
+    width_left: np.ndarray  # shape (N,) metres
+    length_m: float  # total along-track distance
+    distance_m: np.ndarray  # cumulative distance per centerline point, shape (N,)
+    curvature: np.ndarray  # absolute curvature in rad/m, shape (N,)
     corners: list[Corner] = field(default_factory=list)
     pit_lane_loss_s: float = 22.0
     sc_pit_loss_s: float = 7.0
@@ -76,6 +76,7 @@ class Track:
 # ──────────────────────────────────────────────────────────────────────────────
 # Public API
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def load_track(name: str) -> Track:
     """Load a track by name. Cached per-name to avoid repeat I/O."""
@@ -92,6 +93,7 @@ def list_available_tracks() -> list[str]:
 # ──────────────────────────────────────────────────────────────────────────────
 # Internal
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 @lru_cache(maxsize=64)
 def _load_track_cached(name: str) -> Track:
@@ -118,8 +120,18 @@ def _load_track_cached(name: str) -> Track:
         df = df.iloc[:-1].reset_index(drop=True)
 
     xy = df[["x_m", "y_m"]].to_numpy(dtype=np.float64)
-    width_right = df["w_tr_right_m"].to_numpy(dtype=np.float64)
-    width_left = df["w_tr_left_m"].to_numpy(dtype=np.float64)
+    if len(xy) < 3:
+        raise ValueError(
+            f"Track '{name}' has fewer than 3 usable centerline points in {csv_path}. "
+            "Check that the CSV has x_m,y_m columns or run scripts/extract_track_csvs.py again."
+        )
+
+    # Some hand-added/third-party tracks only include x_m,y_m. The TUMFTM
+    # files include width columns, but the simulator does not require width for
+    # Day-0 physics. Default to a conservative 6 m left/right if widths are
+    # absent or NaN so Monaco-style two-column files still load cleanly.
+    width_right = _column_to_numpy_with_default(df, "w_tr_right_m", len(df), default=6.0)
+    width_left = _column_to_numpy_with_default(df, "w_tr_left_m", len(df), default=6.0)
 
     length_m, distance_m = _compute_length(xy)
     curvature = _compute_curvature(xy)
@@ -153,12 +165,27 @@ def _load_track_cached(name: str) -> Track:
     )
 
 
+def _column_to_numpy_with_default(df, column: str, n_rows: int, default: float) -> np.ndarray:
+    """Return a numeric column, replacing missing/NaN values with default.
+
+    This keeps the loader compatible with both racetrack-database files
+    (x/y plus width columns) and simple manually added centerlines (x/y only).
+    """
+    try:
+        values = df[column].to_numpy(dtype=np.float64)
+    except Exception:
+        return np.full(n_rows, default, dtype=np.float64)
+    if len(values) != n_rows:
+        return np.full(n_rows, default, dtype=np.float64)
+    return np.where(np.isfinite(values), values, default)
+
+
 def _compute_length(xy: np.ndarray) -> tuple[float, np.ndarray]:
     """Return (total_length, cumulative_distance_per_point) treating xy as a closed loop."""
     # Closing segment from last → first point
-    diffs_open = np.diff(xy, axis=0)                          # shape (N-1, 2)
-    closing_seg = (xy[0] - xy[-1]).reshape(1, 2)              # shape (1, 2)
-    seg_lens_open = np.linalg.norm(diffs_open, axis=1)        # shape (N-1,)
+    diffs_open = np.diff(xy, axis=0)  # shape (N-1, 2)
+    closing_seg = (xy[0] - xy[-1]).reshape(1, 2)  # shape (1, 2)
+    seg_lens_open = np.linalg.norm(diffs_open, axis=1)  # shape (N-1,)
     closing_len = float(np.linalg.norm(closing_seg))
 
     total = float(seg_lens_open.sum() + closing_len)
@@ -179,8 +206,8 @@ def _compute_curvature(xy: np.ndarray) -> np.ndarray:
     prev = np.roll(xy, 1, axis=0)
     nxt = np.roll(xy, -1, axis=0)
 
-    d1 = (nxt - prev) / 2.0                       # first derivative
-    d2 = nxt - 2.0 * xy + prev                    # second derivative
+    d1 = (nxt - prev) / 2.0  # first derivative
+    d2 = nxt - 2.0 * xy + prev  # second derivative
 
     num = np.abs(d1[:, 0] * d2[:, 1] - d1[:, 1] * d2[:, 0])
     denom = (d1[:, 0] ** 2 + d1[:, 1] ** 2) ** 1.5 + 1e-9
@@ -224,13 +251,7 @@ def _detect_corners(
         ends.append(len(above))
 
     # Pair starts and ends; if the loop wraps (above at both ends), merge.
-    if (
-        starts
-        and ends
-        and starts[0] == 0
-        and ends[-1] == len(above)
-        and len(starts) > 1
-    ):
+    if starts and ends and starts[0] == 0 and ends[-1] == len(above) and len(starts) > 1:
         # The trailing segment continues into the leading segment.
         merged_start = starts[-1]
         merged_end = ends[0] + len(above)
@@ -271,7 +292,9 @@ def _detect_corners(
     corners.sort(key=lambda c: c.distance_m)
     # Re-number after sort
     return [
-        Corner(name=f"T{i + 1}", distance_m=c.distance_m, radius_m=c.radius_m, direction=c.direction)
+        Corner(
+            name=f"T{i + 1}", distance_m=c.distance_m, radius_m=c.radius_m, direction=c.direction
+        )
         for i, c in enumerate(corners)
     ]
 

@@ -41,7 +41,10 @@ This forces the agent to *plan* — not just react. We saw this work in our Roun
 
 ## The training story
 
-We trained Qwen3-4B with TRL GRPO on a single RTX 5090 over 500 steps. The setup:
+The repo is wired for the Qwen3-4B + TRL GRPO run on a single RTX 5090. The local smoke
+artifact included here uses the same environment/evaluation path with a scripted checkpoint
+policy so we can verify the end-to-end plumbing before spending GPU time. The intended full
+run is:
 
 - Stage 1: SFT warm-start on rule-based expert trajectories
 - Stage 2: GRPO with shaped per-step rewards
@@ -49,7 +52,7 @@ We trained Qwen3-4B with TRL GRPO on a single RTX 5090 over 500 steps. The setup
 
 > [Embed: `results/eval_curve.png`]
 
-The trained policy beats the untrained baseline by ~30 average score points across our four scenario families. The single most-vivid example is the **weather roulette** scenario at Spa: the untrained agent stays out into the rain and finishes P9 with a 0.30 score. Same seed, same opponents, the trained agent calls `REQUEST_FORECAST` at lap 5, sees the rain cone, calls `INSPECT_TYRE_DEGRADATION`, then pits one lap before the rain peak. P2 finish, 0.91 score.
+In the local smoke evaluation, the checkpoint policy beats the shallow untrained baseline by a wide margin across all four scenario families. The single most-vivid example is the **weather roulette** scenario at Spa: the untrained baseline stays out into the rain and lands around 0.38. Same seed, same opponents, the checkpoint policy calls `REQUEST_FORECAST`, inspects tyres, sends the radio call, then pits for inters before the rain peak. P2 finish, around 0.95 score.
 
 > [Embed: visualizer GIF — 4 seconds, untrained vs trained side-by-side]
 
@@ -63,7 +66,7 @@ First bad action: STAY_OUT lap 7. Missed signal: REQUEST_FORECAST not called.
 Preferred order: REQUEST_FORECAST → INSPECT_TYRE_DEGRADATION → PIT_NOW inter.
 ```
 
-Memory-augmented evaluation showed an additional ~0.07 average improvement over the base trained policy — the agent learns from its own failures across episodes without any embedding store or vector database.
+Memory retrieval is implemented and measurable via `results/ablation.md`. The local scripted smoke policy is already near ceiling, so its ablation delta is expectedly small; the meaningful ablation should be rerun after the real GRPO checkpoint is trained.
 
 ## Try it
 

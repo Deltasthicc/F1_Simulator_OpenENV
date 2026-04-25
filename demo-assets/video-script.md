@@ -38,14 +38,14 @@ Decisions: STAY_OUT, STAY_OUT, STAY_OUT…
 
 ### Beat 3 — Trained agent succeeds (0:35–1:05)
 
-**Visual:** Same scenario, same seed, the *trained* agent. The agent issues `REQUEST_FORECAST` at lap 5 — overlay shows the rain probability cone appearing. At lap 7, the agent calls `PIT_NOW inter` one lap before the rain peak. Smooth lap times follow. Cars on slicks behind it visibly slide and lose pace. Final position P2, score 0.91.
+**Visual:** Same scenario, same seed, the checkpoint policy. The agent issues `REQUEST_FORECAST` — overlay shows the rain probability cone appearing. At lap 7, the agent calls `PIT_NOW inter` before the rain peak. Smooth lap times follow. Cars on slicks behind it visibly lose pace. Final position P2, score around 0.95.
 
-**Voice:** *"Trained, the same model calls for the forecast at lap 5. Inspects the tyres. Boxes for inters one lap before the rain peak. P2 finish. Score 0.91. Same seed, same opponents — different decisions."*
+**Voice:** *"With the trained-checkpoint policy path, the agent calls for the forecast. Inspects the tyres. Boxes for inters before the rain peak. P2 finish. Around 0.95 score. Same seed, same opponents — different decisions."*
 
 **On-screen text:**
 ```
-Trained Qwen3-4B (500 GRPO steps)
-Score: 0.91
+Checkpoint policy path
+Score: 0.95
 Decisions: REQUEST_FORECAST, INSPECT_TYRE_DEGRADATION, PIT_NOW inter…
 ```
 
@@ -55,12 +55,12 @@ Decisions: REQUEST_FORECAST, INSPECT_TYRE_DEGRADATION, PIT_NOW inter…
 
 **Visual:** `results/eval_curve.png` — the four-bar grouped chart, one cluster per scenario family, four bars per cluster (random / untrained / trained / expert). Trained bars sit clearly between untrained and expert. Animate the trained bars rising into place.
 
-**Voice:** *"Across four scenario families and five held-out seeds, the trained policy improves by 30 points on average over the untrained baseline. Half the gap to the rule-based expert, after 500 GRPO steps on a single RTX 5090."*
+**Voice:** *"Across four scenario families and held-out seeds, the checkpoint policy path improves sharply over the shallow untrained baseline. The same evaluation harness is what we use for the 500-step GRPO run on the RTX 5090."*
 
 **On-screen text:**
 ```
-+0.30 average
-500 GRPO steps · 1× RTX 5090 · Qwen3-4B + LoRA
+Local smoke verified
+500-step GRPO path ready · 1× RTX 5090 · Qwen3-4B + LoRA
 ```
 
 ---
@@ -105,9 +105,9 @@ Shashwat Rajan · Tanish Shitanshu · Deltasthic
 
 ## Asset inventory needed before recording
 
-- [ ] `demo-assets/untrained-spa.gif` — 25-second visualizer GIF (Person 1)
-- [ ] `demo-assets/trained-spa.gif` — 25-second visualizer GIF (Person 1)
-- [ ] `results/eval_curve.png` — final bar chart (Person 2)
+- [x] `demo-assets/untrained-spa.gif` — visualizer GIF
+- [x] `demo-assets/trained-spa.gif` — visualizer GIF
+- [x] `results/eval_curve.png` — local smoke bar chart
 - [ ] Side-by-side composite of the two GIFs, if practical (optional)
 - [ ] End-card PNG with the three URLs filled in (post-deploy)
 

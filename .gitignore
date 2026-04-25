@@ -68,12 +68,8 @@ htmlcov/
 .pytest_cache/
 
 # External research notes (private — never commit)
-<<<<<<< HEAD
-
-=======
 [External]*.md
 !README.md
->>>>>>> 4323b3e (Added env and scoring and basic READMEs)
 
 # Docker volumes / data caches that shouldn't be in git
 data/*.cache

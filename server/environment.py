@@ -75,7 +75,12 @@ class F1StrategistEnvironment(Environment[F1Action, F1Observation, F1State]):
         if "scenario" in options and isinstance(options["scenario"], dict):
             scenario = copy.deepcopy(options["scenario"])
         else:
-            family = task or options.get("task") or options.get("scenario_family") or "dry_strategy_sprint"
+            family = (
+                task
+                or options.get("task")
+                or options.get("scenario_family")
+                or "dry_strategy_sprint"
+            )
             if family not in SCENARIOS:
                 family = "dry_strategy_sprint"
             scenario = copy.deepcopy(SCENARIOS[family])
@@ -125,7 +130,11 @@ class F1StrategistEnvironment(Environment[F1Action, F1Observation, F1State]):
         obs.reward = total_reward
         obs.done = self._done
         obs.message = message
-        obs.score = total_reward if not self._done else self._final_scores.get("weighted_final", total_reward)
+        obs.score = (
+            total_reward
+            if not self._done
+            else self._final_scores.get("weighted_final", total_reward)
+        )
         return obs
 
     @property
@@ -345,7 +354,9 @@ class F1StrategistEnvironment(Environment[F1Action, F1Observation, F1State]):
         PostmortemMemory.record(
             {
                 "scenario_family": self._scenario["scenario_family"],
-                "failure_category": PostmortemMemory.classify_failure(self._audit_trail, self._final_scores),
+                "failure_category": PostmortemMemory.classify_failure(
+                    self._audit_trail, self._final_scores
+                ),
                 "first_bad_action": self._find_first_bad_action(),
                 "missed_signal": self._diagnose_missed_signal(),
                 "preferred_intervention_order": self._suggest_order(),
@@ -409,7 +420,11 @@ class F1StrategistEnvironment(Environment[F1Action, F1Observation, F1State]):
         self._ego_car.tyre_health = 1.0
         self._ego_car.pit_stops += 1
         self._ego_car.stints.append({"compound": compound, "start_lap": self._lap, "end_lap": None})
-        pit_loss = self._track.sc_pit_loss_s if self._race_status in {"sc", "vsc"} else self._track.pit_lane_loss_s
+        pit_loss = (
+            self._track.sc_pit_loss_s
+            if self._race_status in {"sc", "vsc"}
+            else self._track.pit_lane_loss_s
+        )
         self._ego_car.cumulative_time_s += pit_loss
         self._pit_cooldown_remaining = self.PIT_COOLDOWN_LAPS
         self._pit_decisions.append(
@@ -533,7 +548,9 @@ class F1StrategistEnvironment(Environment[F1Action, F1Observation, F1State]):
         criteria = self._scenario.get("success_criteria", {}) if self._scenario else {}
         lo, hi = criteria.get("optimal_pit_window", [0, 0])
         if lo <= self._lap <= hi:
-            return [{"type": "pit_window", "message": f"Optimal pit window active: laps {lo}-{hi}."}]
+            return [
+                {"type": "pit_window", "message": f"Optimal pit window active: laps {lo}-{hi}."}
+            ]
         return []
 
     def _cascade_alerts(self) -> list[dict]:
@@ -579,13 +596,17 @@ class F1StrategistEnvironment(Environment[F1Action, F1Observation, F1State]):
         return round(max(0.0, self._ego_car.cumulative_time_s - leader.cumulative_time_s), 3)
 
     def _gap_ahead(self) -> float | None:
-        ahead = [c for c in self._opponents if c.current_position == self._ego_car.current_position - 1]
+        ahead = [
+            c for c in self._opponents if c.current_position == self._ego_car.current_position - 1
+        ]
         if not ahead:
             return None
         return round(max(0.0, self._ego_car.cumulative_time_s - ahead[0].cumulative_time_s), 3)
 
     def _gap_behind(self) -> float | None:
-        behind = [c for c in self._opponents if c.current_position == self._ego_car.current_position + 1]
+        behind = [
+            c for c in self._opponents if c.current_position == self._ego_car.current_position + 1
+        ]
         if not behind:
             return None
         return round(max(0.0, behind[0].cumulative_time_s - self._ego_car.cumulative_time_s), 3)
@@ -632,11 +653,20 @@ class F1StrategistEnvironment(Environment[F1Action, F1Observation, F1State]):
         return ""
 
     def _diagnose_missed_signal(self) -> str:
-        if "REQUEST_FORECAST" not in self._inspection_calls and self._scenario.get("scenario_family") == "weather_roulette":
+        if (
+            "REQUEST_FORECAST" not in self._inspection_calls
+            and self._scenario.get("scenario_family") == "weather_roulette"
+        ):
             return "weather_forecast"
-        if "ASSESS_UNDERCUT_WINDOW" not in self._inspection_calls and self._scenario.get("scenario_family") == "dry_strategy_sprint":
+        if (
+            "ASSESS_UNDERCUT_WINDOW" not in self._inspection_calls
+            and self._scenario.get("scenario_family") == "dry_strategy_sprint"
+        ):
             return "undercut_window"
-        if self._scenario.get("scenario_family") == "late_safety_car" and "HOLD_GAP" not in self._action_verbs:
+        if (
+            self._scenario.get("scenario_family") == "late_safety_car"
+            and "HOLD_GAP" not in self._action_verbs
+        ):
             return "safety_car_gap"
         return ""
 
@@ -646,7 +676,12 @@ class F1StrategistEnvironment(Environment[F1Action, F1Observation, F1State]):
             return ["REQUEST_FORECAST", "RADIO_DRIVER", "PIT_NOW inter", "INSPECT_FUEL_MARGIN"]
         if family == "late_safety_car":
             return ["HOLD_GAP 4", "RADIO_DRIVER", "PIT_NOW hard", "SET_MODE push"]
-        return ["CHECK_OPPONENT_STRATEGY 16", "ASSESS_UNDERCUT_WINDOW", "RADIO_DRIVER", "PIT_NOW soft"]
+        return [
+            "CHECK_OPPONENT_STRATEGY 16",
+            "ASSESS_UNDERCUT_WINDOW",
+            "RADIO_DRIVER",
+            "PIT_NOW soft",
+        ]
 
 
 def _weather_dict(weather) -> dict:

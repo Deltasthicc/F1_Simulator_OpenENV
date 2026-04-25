@@ -1,9 +1,17 @@
 # Training & Evaluation — F1 Strategist
 
-End-to-end reproduction of the GRPO checkpoint
-[`Deltasthic/f1-strategist-qwen3-4b-grpo`](https://huggingface.co/Deltasthic/f1-strategist-qwen3-4b-grpo)
-and its evaluation numbers. See [`results/FINAL_RESULTS.md`](results/FINAL_RESULTS.md)
-for the full untrained-vs-trained comparison table once the run is complete.
+This repo is ready for two levels of training:
+
+1. A **verified local smoke path** that runs without a large GPU, exercises the
+   environment and evaluator, and writes checkpoint-shaped artifacts under
+   `grpo_smoke/`.
+2. A **GPU handoff path** for a real Qwen3-4B GRPO run on the RTX 5090 server.
+   The model repo
+   [`Deltasthic/f1-strategist-qwen3-4b-grpo`](https://huggingface.co/Deltasthic/f1-strategist-qwen3-4b-grpo)
+   should only be published after that run finishes.
+
+See [`results/FINAL_RESULTS.md`](results/FINAL_RESULTS.md) for the current local
+smoke comparison table and methodology notes.
 
 > This recipe is the OpsTwin V3 stack with the F1 Strategist env swapped in. Same Python,
 > same TRL/transformers/accelerate pins, same Unsloth path on the 5090. We are reusing it
@@ -42,7 +50,9 @@ uv pip install "unsloth[cu128] @ git+https://github.com/unslothai/unsloth.git"
 uv pip install -e .
 
 # HuggingFace auth (for push + private models). Token needs write access.
-echo "HF_TOKEN=hf_xxxxx" > .env
+# Do not commit .env; it is gitignored.
+cp .env.example .env
+# then edit .env and set HF_TOKEN
 ```
 
 ### Stack gotchas (lessons from OpsTwin V3)
@@ -57,26 +67,33 @@ echo "HF_TOKEN=hf_xxxxx" > .env
 ```bash
 source .venv/bin/activate && set -a && source .env && set +a
 
-# 50-step smoke on Qwen3-0.6B — should take ~5 min on the 5090
+# Verified CPU/local smoke. This does not train Qwen; it validates the env,
+# evaluator, checkpoint layout, and reward-curve plotting.
 python train.py \
-    --model Qwen/Qwen3-0.6B \
-    --task dry_strategy_sprint \
-    --max-steps 50 \
-    --batch-size 1 --grad-accum 8 \
+    --model heuristic \
+    --task multi \
+    --max-steps 12 \
+    --batch-size 1 --grad-accum 1 \
     --output-dir ./grpo_smoke
 
 # Inspect the smoke run
-python scripts/plot_training_curve.py --run-dir ./grpo_smoke
+python scripts/plot_training_curve.py --run-dir ./grpo_smoke --output results/training_loss_curve.png
 # Open results/training_loss_curve.png
 ```
 
-If the reward trends up between step 10 and step 50, you're good to launch the full run.
+If this passes and produces a non-empty curve, the environment and evaluation loop are
+ready for the full run.
 If it's flat, **stop** — there's almost certainly a reward bug, not a training bug.
 Inspect a couple of rollouts via `python rollout.py --task dry_strategy_sprint --model ./grpo_smoke --verbose`.
 
 ## Three-stage training (full run)
 
 ### Stage 1 — broad coverage SFT warm-start
+
+This repo currently includes the SFT data generator but not a separate
+`train_sft_v1.py` implementation. Use this stage only if you bring in the SFT
+trainer from OpsTwin or another PEFT/SFT trainer; otherwise start with the
+single-stage GRPO path below.
 
 ```bash
 # First, generate the SFT dataset from procedural seeds + expert trajectories

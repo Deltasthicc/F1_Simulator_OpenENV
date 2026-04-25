@@ -47,14 +47,25 @@ app = create_app(
     env_name="F1 Strategist",
 )
 
-# Optional: also mount our richer custom Gradio demo panel at /demo
+# Optional: also mount our richer custom Gradio demo panel at /demo, and
+# redirect the root path "/" to "/demo" so first-time visitors land on the
+# polished landing page (with hero, charts, before/after GIFs) instead of
+# the bare OpenEnv command console.
 if os.environ.get("ENABLE_WEB_INTERFACE") == "1":
     try:
         import gradio as gr
+        from fastapi.responses import RedirectResponse
         from server.visualizer import build_gradio_panel
 
         _demo_app = build_gradio_panel(_shared_env)
         app = gr.mount_gradio_app(app, _demo_app, path="/demo")
+
+        # Redirect "/" → "/demo" so the Space URL goes straight to the landing.
+        # The OpenEnv playground stays available at /web for direct access.
+        if os.environ.get("LANDING_AT_ROOT", "1") == "1":
+            @app.get("/", include_in_schema=False)
+            async def _root_redirect():
+                return RedirectResponse(url="/demo")
     except Exception:
         pass  # gradio not installed or panel failed — degrade gracefully
 

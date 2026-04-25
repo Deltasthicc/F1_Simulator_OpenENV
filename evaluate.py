@@ -342,23 +342,114 @@ def _untrained_policy(obs, rng: random.Random, family: str) -> str:
 
 
 def _plot(results: dict, tasks: list[str], modes: list[str], output: Path) -> None:
+    """Annotated bar chart: per-mode bars + value labels + Δ-from-untrained arrow.
+
+    Designed to read at a glance — judges can immediately see the size of the
+    gap from untrained → trained on each scenario without inspecting numbers.
+    """
     output.parent.mkdir(parents=True, exist_ok=True)
-    x = list(range(len(tasks)))
-    width = 0.8 / max(1, len(modes))
-    fig, ax = plt.subplots(figsize=(10, 5))
+    # Paddock palette — keep mode→colour stable across all charts in the repo
+    palette = {
+        "random": "#9aa0a6",       # neutral grey
+        "untrained": "#ef8a17",    # McLaren orange
+        "trained": "#1a8754",      # green flag
+        "expert": "#c1121f",       # Ferrari red
+        "panic": "#6c2dc7",
+    }
+    nice_names = {
+        "dry_strategy_sprint": "Dry sprint",
+        "weather_roulette": "Weather roulette",
+        "late_safety_car": "Late safety car",
+        "championship_decider": "Championship decider",
+        "virtual_safety_car_window": "VSC window",
+        "tyre_cliff_management": "Tyre cliff",
+    }
+
+    n_tasks = len(tasks)
+    n_modes = len(modes)
+    width = 0.8 / max(1, n_modes)
+    x = list(range(n_tasks))
+
+    fig, ax = plt.subplots(figsize=(max(11, n_tasks * 2.2), 6.0), dpi=160)
+    fig.patch.set_facecolor("white")
+
+    bar_handles: dict[str, list] = {m: [] for m in modes}
     for i, mode in enumerate(modes):
-        means = [results[mode][task]["mean"] for task in tasks]
-        stds = [results[mode][task]["std"] for task in tasks]
+        means = [results[mode][t]["mean"] for t in tasks]
+        stds = [results[mode][t].get("std", 0.0) for t in tasks]
         offsets = [v - 0.4 + width / 2 + i * width for v in x]
-        ax.bar(offsets, means, width=width, yerr=stds, capsize=3, label=mode)
+        bars = ax.bar(
+            offsets, means, width=width, yerr=stds, capsize=4,
+            color=palette.get(mode, "#888888"),
+            edgecolor="white", linewidth=1.2,
+            label=mode.replace("_", " "),
+            zorder=3,
+        )
+        bar_handles[mode] = list(zip(offsets, means, bars))
+        # Numeric label above each bar
+        for off, m, bar in zip(offsets, means, bars):
+            ax.text(
+                off, m + 0.018, f"{m:.2f}",
+                ha="center", va="bottom",
+                fontsize=8.5, fontweight="bold",
+                color=palette.get(mode, "#222"), zorder=4,
+            )
+
+    # Δ arrow: untrained → trained on every task
+    if "untrained" in modes and "trained" in modes:
+        for task_idx, task in enumerate(tasks):
+            ut_mean = results["untrained"][task]["mean"]
+            tr_mean = results["trained"][task]["mean"]
+            delta = tr_mean - ut_mean
+            if abs(delta) < 0.02:
+                continue
+            xpos = task_idx + 0.36  # right of the trained bar group
+            arrow_color = "#1a8754" if delta > 0 else "#c1121f"
+            ax.annotate(
+                "",
+                xy=(xpos, tr_mean), xytext=(xpos, ut_mean),
+                arrowprops=dict(arrowstyle="->", color=arrow_color,
+                                lw=2.0, shrinkA=0, shrinkB=0),
+                zorder=5,
+            )
+            ax.text(
+                xpos + 0.04, (ut_mean + tr_mean) / 2,
+                f"Δ {delta:+.2f}",
+                fontsize=9, fontweight="bold",
+                color=arrow_color,
+                va="center", ha="left", zorder=5,
+            )
+
     ax.set_xticks(x)
-    ax.set_xticklabels(tasks, rotation=20, ha="right")
-    ax.set_ylim(0, 1.0)
-    ax.set_ylabel("Weighted final score")
-    ax.set_title("F1 Strategist evaluation")
-    ax.legend()
+    ax.set_xticklabels([nice_names.get(t, t) for t in tasks],
+                       rotation=12, ha="right", fontsize=10)
+    ax.set_ylim(0, 1.18)
+    ax.set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+    ax.set_ylabel("Weighted final score (0–1)", fontsize=11, fontweight="bold")
+    ax.set_title("F1 Strategist — held-out evaluation", fontsize=14,
+                 fontweight="bold", pad=12)
+    ax.grid(axis="y", alpha=0.3, color="#cfcfcf", zorder=1)
+    ax.set_axisbelow(True)
+    # Reference horizontal line at 0.5 — "non-trivially good"
+    ax.axhline(0.5, color="#888", linewidth=0.8, linestyle="--", alpha=0.6, zorder=2)
+    ax.text(n_tasks - 0.5, 0.51, "0.50 baseline",
+            fontsize=8.5, color="#666", va="bottom", ha="right")
+
+    legend = ax.legend(loc="upper left", ncol=len(modes), fontsize=9.5,
+                       framealpha=0.95, frameon=True)
+    legend.get_frame().set_edgecolor("#cfcfcf")
+
+    # Footer caption — explains what the numbers mean
+    ax.text(
+        0.5, -0.20,
+        "Higher is better. Reward combines race result, strategic decisions, "
+        "tyre/fuel management, comms quality, and operational efficiency.",
+        transform=ax.transAxes, fontsize=8.5, color="#555",
+        ha="center", va="top", style="italic",
+    )
+
     fig.tight_layout()
-    fig.savefig(output, dpi=160)
+    fig.savefig(output, dpi=160, bbox_inches="tight")
     plt.close(fig)
 
 

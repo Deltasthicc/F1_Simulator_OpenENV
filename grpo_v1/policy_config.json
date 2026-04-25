@@ -1,0 +1,6 @@
+{
+  "policy": "grpo",
+  "base_model": "Qwen/Qwen3-4B",
+  "task": "multi",
+  "max_steps": 500
+}

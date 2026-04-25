@@ -79,3 +79,17 @@ data/raw/
 
 racetrack-database-master/
 archive/
+
+# local env / generated cache
+.venv/
+__pycache__/
+*.pyc
+unsloth_compiled_cache/
+
+# temporary train.py backups
+train.py.bak*
+train.py.before_*
+train.py.broken_*
+# Keep final trained GRPO model
+!grpo_v1/
+!grpo_v1/**

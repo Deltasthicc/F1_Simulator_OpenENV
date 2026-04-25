@@ -18,22 +18,23 @@ Updated after each phase gate. If anything kills the session, read this top-to-b
 - [x] Phase 2 — Re-verify env (164 tests + 6 scenarios)
 - [x] Phase 3 — Cloudflare tunnel for f1.chinnaboina.com (LIVE)
 - [x] Phase 4 — Generate SFT seed data (2450 turns)
-- [⏸] Phase 5 — GRPO smoke run [PAUSED: GPU shared with friend; NaN issue at first generation needs --no-unsloth retry]
-- [⏸] Phase 6 — Full GRPO (500 steps, Qwen3-4B) [BLOCKED on Phase 5]
-- [x] Phase 7 — Landing page LIVE at https://f1.chinnaboina.com/ (CPU-only)
-- [x] Phase 8 — HF Space LIVE (Deltasthic/f1-strategist serves landing page); checkpoint push deferred until Phase 6
-- [⏸] Phase 9 — Eval against trained checkpoint [BLOCKED on Phase 6]
-- [~] Phase 10 — Demo polish (README updated with live URLs; numbers + new GIFs after Phase 9)
-- [~] Phase 11 — Pre-push hygiene done (secret scan ✅, no large files ✅, .env not tracked ✅, README links resolve ✅); final tag waits on training
-- [~] Phase 12 — Historical replay loader stubbed (`scripts/build_historical_replay.py`, `data/historical_replays/`); leaderboard not yet
+- [x] Phase 5 — GRPO smoke (Shashwat already trained on another machine, smoke equivalent done)
+- [x] Phase 6 — Full GRPO 500 steps Qwen3-4B (Shashwat — committed via main, merged into dev as `d763d0b`)
+- [x] Phase 7 — Landing page LIVE at https://f1.chinnaboina.com/
+- [x] Phase 8 — HF Space LIVE (Deltasthic/f1-strategist serves landing page)
+- [ ] Phase 9 — Eval against trained checkpoint **— NEXT**, but BLOCKED on `git lfs pull` (need git-lfs install for actual safetensors weights)
+- [ ] Phase 10 — Demo polish: re-render before/after GIFs with real trained checkpoint, update blog with real numbers, record video, publish blog + YouTube
+- [ ] Phase 11 — HF Hub model push (`Deltasthic/f1-strategist-qwen3-4b-grpo`), pre-push checklist, tag `v1.0-finale`, submit official form
+- [~] Phase 12 — Historical replay loader stubbed; can run after Phase 9 if time
 
-## Resume markers when GPU is free
-**SIGNAL:** `nvidia-smi --query-gpu=memory.free --format=csv,noheader` returns >25 GB.
-**RESUME AT:** Phase 5. First action: re-run smoke with `--no-unsloth` (Unsloth's patched generate triggers NaN on sm_120 — confirmed three identical CUDA asserts). Command:
+## Resume markers when ready
+**NEXT BLOCKER:** `git-lfs` not installed. The `grpo_v1/*.safetensors` files are 134-byte LFS pointers, not real weights. To unblock:
 ```
-tmux new -d -s smoke "source ~/.virtualenvs/f1-strategist/bin/activate && set -a && source .env && set +a && rm -rf grpo_smoke training_smoke.log && python train.py --backend trl --model Qwen/Qwen3-0.6B --task dry_strategy_sprint --max-steps 50 --batch-size 1 --grad-accum 8 --logging-steps 5 --save-steps 25 --no-unsloth --output-dir ./grpo_smoke 2>&1 | tee training_smoke.log"
+sudo apt install git-lfs       # one sudo prompt
+git lfs install                # configures filters
+git lfs pull                   # downloads actual weights from origin
 ```
-If that also NaNs: lower `--temperature` 0.9→0.5 in train.py, or switch to Qwen3-1.7B (has real pad token, not the placeholder Qwen3-0.6B uses).
+After that, `grpo_v1/checkpoint-500/adapter_model.safetensors` will be the real model and we can run `evaluate.py --model grpo_v1/checkpoint-500`.
 
 ## Phase log
 
@@ -71,4 +72,32 @@ If that also NaNs: lower `--temperature` 0.9→0.5 in train.py, or switch to Qwe
 - HF_TOKEN: real value confirmed in .env, `whoami()` returns `Deltasthic` (org account direct login)
 
 ## Open blockers
-None — clear runway through training.
+1. **git-lfs not installed.** Blocks Phase 9 (eval against real weights). Fix: `sudo apt install git-lfs && git lfs install && git lfs pull`.
+
+## Phase 6 — GRPO training (Shashwat's run, merged into dev)
+- Commit: `eb9f4bf "Add trained Unsloth vLLM GRPO model and results"` (Shashwat, 2026-04-25 13:07)
+- Steps: 500 (full target run)
+- Saves: every 50 steps, 10 checkpoints (50, 100, 150, ..., 500)
+- Reward trajectory (from `grpo_v1/checkpoint-500/trainer_state.json`):
+  - Step 10  : reward=0.875, std=0.121
+  - Step 500 : reward=0.893, std=0.095
+  - Slight upward trend; std tightening (consistency improving)
+  - `loss` collapsed to 0.0, `frac_reward_zero_std` reached 1.0 by end (policy converged)
+- Train.py merge conflict resolved by adopting Shashwat's working config:
+  `fast_inference=True, max_lora_rank=16, gpu_memory_utilization=0.30`
+
+## Phase 7 — Landing page ✅
+- `server/static/{index.html, style.css, app.js}` created with line-drawing animation
+- `server/app.py` patched to serve `/` and `/static/*` (route override for openenv's redirect)
+- Live at https://f1.chinnaboina.com/ AND https://Deltasthic-f1-strategist.hf.space/
+
+## Phase 8 — HF Space ✅
+- Deployed via `huggingface_hub.upload_folder()` (bypasses git-lfs need for binaries)
+- W2 hackathon requirement satisfied
+- Updated `demo-assets/hf-space-link.txt` with all three live URLs
+
+## Merge details — origin/main → dev (commit d763d0b)
+- Pulled trained checkpoint (~10 checkpoints × LoRA adapter + tokenizer files)
+- Resolved 1 conflict in train.py
+- Auto-merged .gitignore additions
+- 164 tests still passing post-merge

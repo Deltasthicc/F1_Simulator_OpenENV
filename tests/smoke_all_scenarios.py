@@ -1,6 +1,12 @@
 """Per-scenario expert-vs-panic smoke test."""
 
 import sys
+from pathlib import Path
+
+# Ensure repo root is on sys.path regardless of where this script is invoked from.
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
 from baselines.expert_solver import EXPERT_SEQUENCES, PANIC_SEQUENCES, run_sequence
 from server.scenarios import SCENARIOS
@@ -11,6 +17,8 @@ SCENARIOS_TO_TEST = [
     "weather_roulette",
     "late_safety_car",
     "championship_decider",
+    "virtual_safety_car_window",
+    "tyre_cliff_management",
 ]
 
 

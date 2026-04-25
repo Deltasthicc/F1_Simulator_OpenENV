@@ -30,6 +30,7 @@ CHECK_OPPONENT_STRATEGY <driver_number>
 REQUEST_FORECAST
 ASSESS_UNDERCUT_WINDOW
 INSPECT_FUEL_MARGIN
+MANAGE_TYRE_TEMP <warm|cool|normal>
 RADIO_DRIVER "<message>"
 DRAFT_PIT_WALL "<message>"
 BRIEF_MEDIA "<message>"
@@ -53,6 +54,7 @@ VALID_VERBS = {
     "REQUEST_FORECAST",
     "ASSESS_UNDERCUT_WINDOW",
     "INSPECT_FUEL_MARGIN",
+    "MANAGE_TYRE_TEMP",
     "RADIO_DRIVER",
     "DRAFT_PIT_WALL",
     "BRIEF_MEDIA",
@@ -229,6 +231,35 @@ def _heuristic_generator(history, obs, task) -> str:
         if lap >= 7 and obs.ego_tyre_compound == "hard":
             return "PIT_NOW medium"
         return "DONE" if lap >= obs.total_laps else "STAY_OUT"
+    if family == "virtual_safety_car_window":
+        if "ASSESS_UNDERCUT_WINDOW" not in assistant_text:
+            return "ASSESS_UNDERCUT_WINDOW"
+        if obs.race_status == "vsc" and obs.ego_tyre_compound != "soft":
+            if "VSC deployed" not in assistant_text:
+                return 'RADIO_DRIVER "VSC deployed. Boxing for softs. Low pit loss this lap."'
+            return "PIT_NOW soft"
+        if lap < 8:
+            return "STAY_OUT"
+        return "DONE" if lap >= obs.total_laps else "STAY_OUT"
+
+    if family == "tyre_cliff_management":
+        if "INSPECT_TYRE_DEGRADATION" not in assistant_text:
+            return "INSPECT_TYRE_DEGRADATION"
+        if "MANAGE_TYRE_TEMP cool" not in assistant_text and obs.ego_tyre_health_pct < 60:
+            return "MANAGE_TYRE_TEMP cool"
+        if lap >= 4 and "INSPECT_TYRE_DEGRADATION" in assistant_text:
+            if obs.ego_tyre_health_pct < 55 and "Tyre cliff" not in assistant_text:
+                return 'RADIO_DRIVER "Tyre cliff incoming. Softs going off. Boxing for medium."'
+        if (
+            obs.ego_tyre_compound == "soft"
+            and obs.ego_tyre_health_pct < 50
+            and "Tyre cliff" in assistant_text
+        ):
+            return "PIT_NOW medium"
+        if lap >= 7 and obs.ego_tyre_compound == "soft":
+            return "PIT_NOW medium"
+        return "STAY_OUT"
+
     if "ASSESS_UNDERCUT_WINDOW" not in assistant_text:
         return "ASSESS_UNDERCUT_WINDOW"
     if lap >= 5 and obs.ego_tyre_compound != "soft":

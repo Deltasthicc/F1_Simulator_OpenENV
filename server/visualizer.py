@@ -23,12 +23,8 @@ def render_rollout(rollout_jsonl_path: Path, output_path: Path, fmt: str = "gif"
     if not frames:
         raise ValueError(f"No frames found in {rollout_jsonl_path}")
 
-    track_name = (
-        frames[0].get("track_name") or frames[0].get("observation", {}).get("track_name") or "Monza"
-    )
-    if "observation" in frames[0]:
-        first_obs = frames[0]["observation"]
-        track_name = first_obs.get("track_name", track_name)
+    # track_name is injected at the top level of the first frame by rollout.py
+    track_name = frames[0].get("track_name", "Monza")
     try:
         track = load_track(track_name)
     except FileNotFoundError:

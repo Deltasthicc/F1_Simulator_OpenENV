@@ -14,11 +14,12 @@ RUN pip install --no-cache-dir \
     "pandas>=2.0.0" \
     "matplotlib>=3.8.0"
 
-# Optional: include Gradio for the /web interactive panel
-RUN pip install --no-cache-dir "gradio>=4.0.0"
+# Optional: include Gradio + imageio for the /web interactive panel and GIF rendering
+RUN pip install --no-cache-dir "gradio>=4.0.0" "imageio>=2.31.0" "pillow>=10.0.0"
 
 # Copy repo. Order matters: code that changes most last so docker caches well.
 COPY models.py /app/models.py
+COPY client.py /app/client.py
 COPY server /app/server
 COPY data /app/data
 

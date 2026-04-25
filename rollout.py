@@ -29,10 +29,14 @@ def run_rollout(
 
     if mode == "expert":
         score, trace = run_sequence(scenario, EXPERT_SEQUENCES[family], seed)
+        # Inject track_name into first frame so the visualizer finds it
+        if trace:
+            trace[0]["track_name"] = scenario.get("track_name", "Monza")
     else:
         env = F1StrategistEnvironment()
         obs = env.reset(seed=seed, options={"scenario": scenario})
-        trace = [{"action": "RESET", "observation": obs.model_dump()}]
+        # Store track_name at the top of the first frame for the visualizer
+        trace = [{"action": "RESET", "observation": obs.model_dump(), "track_name": scenario.get("track_name", "Monza")}]
         history: list[dict] = []
         import random
 

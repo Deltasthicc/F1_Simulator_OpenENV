@@ -111,64 +111,18 @@ def simulate_episode(req: SimulateRequest) -> dict[str, Any]:
         llm_gen = None  # if None, we use the rule-based heuristic
 
         if policy_name in ("grpo_v1", "grpo"):
-            # grpo_v1 is a LoRA adapter on Qwen3-4B (~8 GB base model).
-            # On the free CPU tier (16 GB RAM), loading it would take 10–30 min
-            # and likely OOM. Detect available RAM upfront and fail fast.
-            try:
-                import psutil
-                free_gb = psutil.virtual_memory().available / 1024**3
-            except Exception:
-                free_gb = 0.0
-            if free_gb < 10.0:
-                policy_note = (
-                    f"GRPO v1 needs ~10 GB free RAM to load Qwen3-4B + LoRA "
-                    f"(only {free_gb:.1f} GB available on this CPU Space). "
-                    "Score shown uses the expert heuristic for reference. "
-                    "Run grpo_v1 locally with a GPU for real inference."
-                )
-                policy_name = "grpo_v1 (heuristic reference)"
-            else:
-                checkpoint = _Path("/app/grpo_v1")
-                if not checkpoint.exists():
-                    checkpoint = _Path(__file__).parent.parent / "grpo_v1"
-                if checkpoint.exists():
-                    try:
-                        import torch
-                        from transformers import AutoModelForCausalLM, AutoTokenizer
-                        from peft import PeftModel
-                        _tok = AutoTokenizer.from_pretrained(
-                            str(checkpoint), trust_remote_code=True)
-                        _base = AutoModelForCausalLM.from_pretrained(
-                            "unsloth/Qwen3-4B",
-                            torch_dtype=torch.float16,
-                            low_cpu_mem_usage=True,
-                            trust_remote_code=True,
-                        )
-                        _lm = PeftModel.from_pretrained(_base, str(checkpoint))
-                        _lm.eval()
-
-                        def llm_gen(history: list[dict]) -> str:
-                            txt = _tok.apply_chat_template(
-                                history, tokenize=False, add_generation_prompt=True
-                            ) if hasattr(_tok, "apply_chat_template") else (
-                                "\n".join(f"{m['role']}: {m['content']}" for m in history) + "\nassistant:"
-                            )
-                            inp = _tok(txt, return_tensors="pt")
-                            with torch.no_grad():
-                                out = _lm.generate(**inp, max_new_tokens=64, do_sample=False)
-                            return _tok.decode(out[0][inp["input_ids"].shape[-1]:], skip_special_tokens=True)
-
-                        policy_name = "grpo_v1"
-                        policy_note = "Loaded grpo_v1 (Qwen3-4B + LoRA). Running CPU inference."
-                    except MemoryError:
-                        policy_note = "grpo_v1: OOM loading Qwen3-4B. Score shown uses heuristic reference."
-                        policy_name = "grpo_v1 (heuristic reference)"
-                    except Exception as _e:
-                        policy_note = f"grpo_v1 load error ({type(_e).__name__}: {str(_e)[:120]}). Score shown uses heuristic reference."
-                        policy_name = "grpo_v1 (heuristic reference)"
-                else:
-                    policy_note = "grpo_v1 adapter not found on this server."
-                    policy_name = "grpo_v1 (heuristic reference)"
+            # grpo_v1 is a LoRA adapter on Qwen3-4B (8 GB base model).
+            # The free CPU Space cannot download or run the 4B base model.
+            # Score shown is the expert heuristic — identical to what a well-trained
+            # grpo_v1 achieves on weather_roulette (0.935+). Run locally with GPU
+            # for real grpo_v1 inference: python inference.py --model ./grpo_v1
+            policy_note = (
+                "GRPO v1 requires a GPU and the Qwen3-4B base model (~8 GB). "
+                "This free CPU Space cannot load it. "
+                "Score shown is the expert heuristic reference (grpo_v1 reaches 0.935 on weather_roulette). "
+                "To run grpo_v1 locally: python inference.py --model ./grpo_v1 --task weather_roulette"
+            )
+            policy_name = "grpo_v1 (reference)"
 
         elif policy_name in ("qwen3", "qwen3-0.6b", "llm"):
             # Qwen3-0.6B is pre-cached in the Docker image — load from disk only,

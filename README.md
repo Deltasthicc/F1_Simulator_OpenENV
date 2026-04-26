@@ -157,12 +157,12 @@ python evaluate.py \
 
 Current local smoke numbers:
 
-| scenario | random | untrained | scripted trained-smoke | rule-based expert |
+| scenario | random | untrained | GRPO trained | rule-based expert |
 |---|---:|---:|---:|---:|
-| dry_strategy_sprint | 0.363 | 0.506 | 0.965 | 0.968 |
-| weather_roulette | 0.325 | 0.378 | 0.950 | 0.950 |
-| late_safety_car | 0.313 | 0.420 | 0.935 | 0.935 |
-| championship_decider | 0.423 | 0.305 | 0.865 | 0.965 |
+| dry_strategy_sprint | 0.400 | 0.509 | 0.749 | 0.840 |
+| weather_roulette | 0.344 | 0.414 | 0.935 | 0.950 |
+| late_safety_car | 0.332 | 0.525 | 0.935 | 0.935 |
+| championship_decider | 0.209 | 0.269 | 0.535 | 0.965 |
 
 `train.py` has two paths:
 

@@ -126,9 +126,9 @@ The reward function is passed directly to `trl.GRPOTrainer` as a callable. Each 
 | Scenario | Random | Untrained | GRPO trained | Expert heuristic |
 |---|---:|---:|---:|---:|
 | Dry strategy sprint | 0.40 | 0.51 | **0.75** | 0.84 |
-| Weather roulette | 0.34 | 0.41 | **0.95** | 0.95 |
+| Weather roulette | 0.34 | 0.41 | **0.94** | 0.95 |
 | Late safety car | 0.33 | 0.53 | **0.94** | 0.94 |
-| Championship decider | 0.21 | 0.27 | **0.54** | 0.97 |
+| Championship decider | 0.21 | 0.27 | **0.54** | 0.96 |
 | VSC window | 0.33 | 0.38 | **0.73** | 0.97 |
 | Tyre cliff | 0.20 | 0.40 | **0.54** | 0.97 |
 

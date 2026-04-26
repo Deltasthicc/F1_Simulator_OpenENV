@@ -769,11 +769,25 @@ function setupSimWidget() {
     resultEl.classList.remove("hidden");
   }
 
+  // Pre-computed simulation data — loaded once, used for instant replay
+  let _simCache = null;
+  async function getSimData() {
+    if (_simCache) return _simCache;
+    try {
+      const r = await fetch("/static/sim_data.json");
+      _simCache = await r.json();
+    } catch (_) { _simCache = {}; }
+    return _simCache;
+  }
+  // Start loading cache immediately so it's ready when user clicks
+  getSimData();
+
   // Main: run the simulation
   if (runBtn) {
     runBtn.addEventListener("click", async () => {
-      const task = scenarioSel.value;
-      const seed = parseInt(seedSel.value, 10);
+      const task  = scenarioSel.value;
+      const seed  = parseInt(seedSel.value, 10);
+      const model = modelSel ? modelSel.value : "heuristic";
 
       // Reset UI
       runBtn.disabled = true;
@@ -785,53 +799,50 @@ function setupSimWidget() {
       setScore(0);
 
       const scLabel = scenarioSel.options[scenarioSel.selectedIndex].text.split("—")[0].trim();
-      const mLabel  = modelSel ? ` · ${modelSel.options[modelSel.selectedIndex].text.split("(")[0].trim().toUpperCase()}` : "";
+      const mLabel  = modelSel ? ` · ${modelSel.options[modelSel.selectedIndex].text.split("—")[0].trim().toUpperCase()}` : "";
       if (scenLabel) scenLabel.textContent = scLabel.toUpperCase() + mLabel;
       if (statusEl) {
-        statusEl.textContent = "running…";
+        statusEl.textContent = "loading race data…";
         statusEl.className = "sim-out-status running";
       }
 
-      const model = modelSel ? modelSel.value : "heuristic";
-
-      // Update status to reflect expected wait time per model
-      if (statusEl) {
-        const waitHint = model === "qwen3"
-          ? "running Qwen3-0.6B on CPU — takes ~2 min, please wait…"
-          : model === "grpo_v1"
-          ? "fetching GRPO v1 reference score…"
-          : "running…";
-        statusEl.textContent = waitHint;
-        statusEl.className = "sim-out-status running";
-      }
-
+      // Try pre-computed cache first (instant), fall back to live /simulate
       let data;
-      try {
-        const resp = await fetch("/simulate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ task, seed, model }),
-        });
-        if (!resp.ok) {
-          let detail = `HTTP ${resp.status}`;
-          try { const j = await resp.json(); detail = j.detail || detail; } catch (_) {}
-          throw new Error(detail);
-        }
-        data = await resp.json();
-      } catch (err) {
-        const short = String(err.message).split("\n")[0].slice(0, 120);
+      const cache = await getSimData();
+      const cacheKey = `${task}|${seed}|${model}`;
+      if (cache[cacheKey]) {
+        data = cache[cacheKey];
+      } else {
         if (statusEl) {
-          statusEl.textContent = `Error: ${short}`;
-          statusEl.className = "sim-out-status";
+          const hint = model === "qwen3"
+            ? "running Qwen3-0.6B on CPU — ~2 min, please wait…"
+            : "running live simulation…";
+          statusEl.textContent = hint;
         }
-        runBtn.disabled = false;
-        runBtn.textContent = "▶ RUN RACE";
-        return;
+        try {
+          const resp = await fetch("/simulate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ task, seed, model }),
+          });
+          if (!resp.ok) {
+            let detail = `HTTP ${resp.status}`;
+            try { const j = await resp.json(); detail = j.detail || detail; } catch (_) {}
+            throw new Error(detail);
+          }
+          data = await resp.json();
+        } catch (err) {
+          const short = String(err.message).split("\n")[0].slice(0, 120);
+          if (statusEl) { statusEl.textContent = `Error: ${short}`; statusEl.className = "sim-out-status"; }
+          runBtn.disabled = false; runBtn.textContent = "▶ RUN RACE";
+          return;
+        }
       }
 
       // Animate through laps
       const laps = data.laps;
       const LAP_DELAY = 320; // ms per lap
+      if (statusEl) { statusEl.textContent = "racing…"; }
       for (let i = 0; i < laps.length; i++) {
         const lap = laps[i];
         setTelem(lap.lap, lap.total_laps, lap.position, lap.compound, lap.health, lap.fuel, lap.weather);
@@ -841,10 +852,10 @@ function setupSimWidget() {
       }
 
       // Done
-      const policyLabel = data.policy || req.model;
-      const noteText = data.policy_note ? ` · ${data.policy_note}` : "";
+      const policyLabel = data.policy || model;
+      const noteText = data.policy_note ? ` · ${data.policy_note.slice(0, 80)}` : "";
       if (statusEl) {
-        statusEl.textContent = `done — P${data.final_pos} · score ${data.final_score.toFixed(3)} · ${policyLabel}${noteText}`;
+        statusEl.textContent = `done — P${data.final_pos} · score ${Number(data.final_score).toFixed(3)} · ${policyLabel}${noteText}`;
         statusEl.className = "sim-out-status done";
       }
       showResult(data);

@@ -29,14 +29,14 @@ items. Each takes 30 seconds to verify and saves a hour of regret if missed.
 - [ ] HF Space link points to a Space that actually loads
 - [ ] Colab badge / link works (open it in incognito to verify auth-free access)
 - [ ] Blog post link points to a published HF blog
-- [ ] Video link points to a public-or-unlisted YouTube
+- [ ] No YouTube or other demo video linked (submission is blog + Colab + Space)
 - [ ] All `results/*.png` referenced in README actually exist
 
 ## 3. Phase 1 (Environment) gating
 
 - [ ] `python -m server.app` starts without errors
 - [ ] `curl http://localhost:8000/health` → `{"status": "ok"}`
-- [ ] `python tests/smoke_http.py` passes all 5 checks
+- [ ] `python tests/smoke_http.py` passes all 6 checks (including `/readme`)
 - [ ] `python tests/test_environment.py` passes
 - [ ] `client.py` imports without errors
 
@@ -74,11 +74,9 @@ items. Each takes 30 seconds to verify and saves a hour of regret if missed.
 - [ ] `python tests/smoke_http.py --base-url https://Deltasthic-f1-strategist.hf.space` passes
 - [ ] Gradio `/web` route works (if enabled)
 - [ ] `demo-assets/hf-space-link.txt` populated
-- [ ] `demo-assets/youtube-link.txt` populated
+- [ ] `demo-assets/youtube-link.txt` is the “not used” placeholder (no video)
 - [ ] `demo-assets/hf-blog-link.txt` populated
 - [ ] Blog post rendered correctly on HF Hub (open in incognito to verify)
-- [ ] Video has audio AND captions
-- [ ] Video is < 2:00 runtime (W3 requirement)
 - [ ] At least one visualizer GIF in `demo-assets/` shows the trained agent making a good call
 
 ## 8. Submission requirements (W1–W4)
@@ -86,8 +84,8 @@ items. Each takes 30 seconds to verify and saves a hour of regret if missed.
 - [ ] **W1** — `pyproject.toml` lists `openenv-core>=0.2.3` as a dep. Verify with `pip show openenv-core`.
 - [ ] **W1** — Colab notebook is committed and runnable
 - [ ] **W2** — HF Space exists, is public, is Running
-- [ ] **W3** — Blog OR video published (we have both, ideally)
-- [ ] **W4** — README links to all of: HF Space, Colab, blog, video, eval_curve.png, training_loss_curve.png
+- [ ] **W3** — Blog published on HF Space (`blog.md`)
+- [ ] **W4** — README links to all of: HF Space, Colab, blog, eval_curve.png, training_loss_curve.png (no video)
 
 ## 9. Theme alignment
 
@@ -115,8 +113,8 @@ python evaluate.py --model Deltasthic/f1-strategist-qwen3-4b-grpo \
 
 # Verify all artifacts exist
 for f in results/eval_summary.json results/eval_curve.png \
-         results/training_loss_curve.png demo-assets/blog-post.md \
-         demo-assets/video-script.md demo-assets/hf-space-link.txt; do
+         results/training_loss_curve.png blog.md \
+         demo-assets/hf-space-link.txt; do
   test -s "$f" && echo "  ok: $f" || echo "MISSING: $f"
 done
 ```
@@ -139,8 +137,8 @@ echo "https://github.com/Deltasthicc/f1-strategist/releases/tag/v1.0-finale"
 Submit through the official hackathon form (link in the hackathon Slack / Discord):
 - GitHub URL: `https://github.com/Deltasthicc/f1-strategist`
 - HF Space URL: `https://huggingface.co/spaces/Deltasthic/f1-strategist`
-- Blog URL: from `demo-assets/hf-blog-link.txt`
-- Video URL: from `demo-assets/youtube-link.txt`
+- Blog URL: from `demo-assets/hf-blog-link.txt` (or the Space `blog.md` blob URL)
+- Demo type: **Blog post** (no video)
 - Theme: #2 Long-Horizon (primary), #3.1 Professional Tasks (secondary)
 - Authors: Shashwat Rajan, Tanish Shitanshu
 

@@ -40,8 +40,10 @@ demo-assets/
 # Captures
 captures/
 
-# Results (not needed at runtime, READMEs reference paths only)
-results/
+# Results: include judge PNGs + eval_summary in image (served under /static/hf-results)
+# (Large stray JSON/JSONL in results/ still excluded by not copying them in Dockerfile)
+results/*.jsonl
+results/*checkpoint*
 
 # Git
 .git/

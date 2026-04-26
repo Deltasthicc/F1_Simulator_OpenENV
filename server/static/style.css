@@ -404,6 +404,8 @@ svg .pit-pulse  { fill: var(--red); }
 
 /* ── MEDIA section ──────────────────────────────────── */
 .media-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.media-grid--two { grid-template-columns: repeat(2, 1fr); max-width: 920px; margin: 0 auto; }
+@media (max-width: 800px) { .media-grid--two { grid-template-columns: 1fr; } }
 .media-card {
   border: 1px solid var(--rule); padding: 26px 22px;
   background: rgba(255,255,255,0.015);

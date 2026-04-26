@@ -16,8 +16,8 @@ HF Space: `Deltasthic/f1-strategist`.
 - [x] **W1** Uses latest OpenEnv (`openenv-core>=0.2.3`).
 - [x] **W1** Minimal TRL training script runnable in Colab — `notebooks/f1_strategist_training_colab.ipynb`.
 - [ ] **W2** Environment hosted on HuggingFace Spaces. Push with `git push hfspace main:main`.
-- [ ] **W3** Mini-blog on HuggingFace OR YouTube video <2 min. Drafts in `demo-assets/`.
-- [ ] **W4** README links to all of: HF Space, Colab notebook, blog, video, training plots, results table.
+- [ ] **W3** Mini-blog on HuggingFace (`blog.md` on the Space). No video for this submission.
+- [ ] **W4** README links to all of: HF Space, Colab notebook, blog, training plots, results table.
 
 ---
 
@@ -104,8 +104,8 @@ These require the RTX 5090 server. All code is written and validated.
 - [ ] Smoke-test live Space: `python tests/smoke_http.py --base-url https://Deltasthic-f1-strategist.hf.space`
 - [ ] Record before/after rollout GIFs (`rollout.py --render`)
 - [ ] `demo-assets/blog-post.md` — final polish (≥600 words, real numbers)
-- [ ] Record video <2 min (see `demo-assets/video-script.md`)
-- [ ] Publish blog on HF, video on YouTube; update README links
+- [x] No demo video; blog + Colab + Space only
+- [ ] Publish blog on HF; update README links
 - [ ] Walk through `PRE_PUSH_CHECKLIST.md`
 
 ---

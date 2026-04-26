@@ -64,21 +64,32 @@ def fmt2(x: float) -> str:
 
 def render_readme_table(data: dict) -> str:
     lines = [
-        "| scenario | random | untrained | GRPO trained | rule-based expert |",
+        "| scenario | random | untrained Qwen3-4B | **SFT+GRPO (grpo_v2)** | expert ceiling |",
         "|---|---:|---:|---:|---:|",
     ]
+    sum_r = sum_u = sum_tr = sum_e = 0.0
+    n = len(TASKS)
     for t in TASKS:
         r = data["random"][t]["mean"]
         u = data["untrained"][t]["mean"]
         tr = data["trained"][t]["mean"]
         e = data["expert"][t]["mean"]
-        lines.append(f"| {t} | {fmt3(r)} | {fmt3(u)} | {fmt3(tr)} | {fmt3(e)} |")
+        sum_r += r
+        sum_u += u
+        sum_tr += tr
+        sum_e += e
+        lines.append(
+            f"| {t} | {fmt3(r)} | {fmt3(u)} | **{fmt3(tr)}** | {fmt3(e)} |"
+        )
+    lines.append(
+        f"| **average** | **{fmt3(sum_r / n)}** | **{fmt3(sum_u / n)}** | **{fmt3(sum_tr / n)}** | **{fmt3(sum_e / n)}** |"
+    )
     return "\n".join(lines)
 
 
 def render_blog_table(data: dict) -> str:
     lines = [
-        "| Scenario | Random | Untrained | GRPO trained | Expert heuristic |",
+        "| Scenario | Random | Untrained Qwen3-4B | **GRPO v2 (ours)** | Expert ceiling |",
         "|---|---:|---:|---:|---:|",
     ]
     for t in TASKS:
@@ -124,7 +135,7 @@ def update_readme(data: dict, dry_run: bool) -> bool:
     new_table = render_readme_table(data)
     new, n = replace_block(
         txt,
-        r"\| scenario \| random \| untrained \|",
+        r"\| scenario \| random \| untrained Qwen3-4B \|",
         new_table,
     )
     if n == 0:
@@ -146,7 +157,7 @@ def update_blog(data: dict, dry_run: bool) -> bool:
     new_table = render_blog_table(data)
     new, n = replace_block(
         txt,
-        r"\| Scenario \| Random \| Untrained \|",
+        r"\| Scenario \| Random \| Untrained Qwen3-4B \|",
         new_table,
     )
     # Also rewrite the headline weather sentence + key-decision delta

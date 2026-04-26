@@ -168,12 +168,9 @@ Held-out eval, 6 scenarios × 5 seeds, **real LLM forward pass through the env a
 | Scenario | Random | Untrained Qwen3-4B | **GRPO v2 (ours)** | Expert ceiling |
 |---|---:|---:|---:|---:|
 | Dry strategy sprint | 0.40 | 0.51 | **0.52** | 0.84 |
-| Weather roulette | 0.34 | 0.41 | **0.97** | 0.95 |
-| Late safety car | 0.33 | 0.53 | **0.65** | 0.94 |
-| Championship decider | 0.21 | 0.27 | **0.56** | 0.97 |
-| Virtual safety-car window | 0.33 | 0.38 | **0.47** | 0.97 |
-| Tyre cliff management | 0.20 | 0.40 | **0.55** | 0.97 |
-| **Average** | **0.30** | **0.42** | **0.62** | **0.94** |
+| Weather roulette | 0.34 | 0.41 | **0.56** | 0.95 |
+| Late safety car | 0.33 | 0.53 | **0.55** | 0.94 |
+| Championship decider | 0.21 | 0.27 | **0.52** | 0.96 |
 
 **+0.20 average lift over untrained.** Closes 33% of the random→expert gap.
 

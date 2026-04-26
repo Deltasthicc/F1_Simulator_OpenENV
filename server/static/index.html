@@ -525,14 +525,14 @@ curl -X POST .../simulate \
   </div>
 </section>
 
-<!-- ═══════════ SECTION 5 — MEDIA / BLOG / VIDEO ═══════════ -->
+<!-- ═══════════ SECTION 5 — MATERIALS (blog + notebook) ═══════════ -->
 <section id="media" class="screen">
   <div class="section-inner">
     <p class="section-label">MATERIALS</p>
-    <h2 class="section-title">Blog, notebook &amp; demo video</h2>
-    <p class="section-sub">All judge-required materials in one place. The Colab notebook is self-contained and re-runnable. The blog post is the full writeup on HF. The video walks through the live environment.</p>
+    <h2 class="section-title">Blog &amp; training notebook</h2>
+    <p class="section-sub">Judge deliverables: technical write-up and a re-runnable Colab. The blog covers environment design, GRPO training, and results. The notebook reproduces smoke tests and training entry points.</p>
 
-    <div class="media-grid">
+    <div class="media-grid media-grid--two">
       <div class="media-card" data-reveal>
         <div class="media-icon">
           <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.4">
@@ -542,21 +542,8 @@ curl -X POST .../simulate \
         </div>
         <div class="media-card-label">HF BLOG POST</div>
         <h3 class="media-card-title">Teaching an LLM to be an F1 Race Engineer</h3>
-        <p class="media-card-desc">Full writeup: environment design, GRPO training setup, results analysis, and key learnings. Pushed as <code>blog.md</code> to the HF Space repo.</p>
+        <p class="media-card-desc">Full writeup: environment design, GRPO training setup, results analysis, and key learnings. Served as <code>blog.md</code> and rendered at <code>/blog</code>.</p>
         <a class="media-btn" href="/blog" target="_blank" rel="noreferrer">Read blog →</a>
-      </div>
-
-      <div class="media-card" data-reveal>
-        <div class="media-icon">
-          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.4">
-            <circle cx="24" cy="24" r="18"/>
-            <path d="M20 16 L32 24 L20 32 Z" fill="currentColor" stroke="none"/>
-          </svg>
-        </div>
-        <div class="media-card-label">DEMO VIDEO</div>
-        <h3 class="media-card-title">2-minute environment walkthrough</h3>
-        <p class="media-card-desc">Shows the environment in action, the trained vs untrained comparison on Weather Roulette, and the key pit-call decision at Lap 7. Link in README.</p>
-        <a class="media-btn media-btn--ghost" href="https://github.com/Deltasthicc/F1_Simulator_OpenENV#readme" target="_blank" rel="noreferrer">See README for link →</a>
       </div>
 
       <div class="media-card" data-reveal>

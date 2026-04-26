@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from openenv.core.env_server import create_app
@@ -89,6 +90,15 @@ app = create_app(
     F1Action,
     F1Observation,
     env_name="F1 Strategist",
+)
+
+# CORS: some HF / Gradio iframes request /readme and /static cross-origin
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Mount static assets and the line-drawing landing page at GET /
@@ -273,9 +283,8 @@ def simulate_episode(req: SimulateRequest) -> dict[str, Any]:
 # /readme endpoint — serves README.md for the OpenEnv playground sidebar
 # ---------------------------------------------------------------------------
 
-@app.get("/readme", include_in_schema=False)
-def get_readme() -> Response:
-    # Try multiple locations — /app/README.md (Docker), then relative to this file
+def _build_readme_response() -> Response:
+    """Load README from disk, strip Space YAML, return markdown with explicit UTF-8."""
     candidates = [
         Path("/app/README.md"),
         Path(__file__).parent.parent / "README.md",
@@ -285,17 +294,36 @@ def get_readme() -> Response:
     for readme in candidates:
         if readme.exists():
             raw = readme.read_text(encoding="utf-8")
-            # Strip HF Space YAML frontmatter so playground sidebar renders clean markdown
             if raw.startswith("---"):
                 end = raw.find("\n---", 3)
                 if end != -1:
                     raw = raw[end + 4:].lstrip("\n")
-            return Response(content=raw, media_type="text/markdown")
-    # Absolute fallback: minimal inline content
+            if not raw.strip():
+                break
+            return Response(
+                content=raw,
+                media_type="text/markdown; charset=utf-8",
+            )
     return Response(
         content=_README_INLINE,
-        media_type="text/markdown",
+        media_type="text/markdown; charset=utf-8",
     )
+
+
+# Multiple paths: HF OpenEnv / Gradio may probe any of these for the side panel
+@app.get("/readme", include_in_schema=False)
+def get_readme() -> Response:
+    return _build_readme_response()
+
+
+@app.get("/README.md", include_in_schema=False)
+def get_readme_filename() -> Response:
+    return _build_readme_response()
+
+
+@app.get("/raw/main/README.md", include_in_schema=False)
+def get_readme_raw_style() -> Response:
+    return _build_readme_response()
 
 
 _README_INLINE = """# F1 Strategist

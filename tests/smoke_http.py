@@ -7,6 +7,7 @@ Boots a local server (or hits a passed --base-url) and confirms:
     3. /step with STAY_OUT returns 200, done == False
     4. /step with garbage returns reward == -0.02
     5. /step with DONE flips done == True
+    6. /readme returns non-empty markdown (playground sidebar)
 
 CLI:
     # Local
@@ -23,6 +24,16 @@ import subprocess
 import sys
 import time
 from urllib.request import urlopen, Request
+
+
+def get_text(url: str) -> str:
+    with urlopen(url, timeout=30) as r:
+        return r.read().decode()
+
+
+def _unwrap_obs(d: dict) -> dict:
+    """OpenEnv API may return a flat observation or {observation: {...}}."""
+    return d.get("observation", d) if isinstance(d, dict) else {}
 
 
 def post_json(url: str, payload: dict) -> dict:
@@ -96,17 +107,20 @@ def run(base_url: str) -> int:
 
     # 2. /reset
     try:
-        obs = post_json(f"{base_url}/reset", {})
-        total = obs.get("observation", {}).get("total_issues_count", 0)
-        assert total > 0, f"reset returned total_issues_count={total}"
+        obs = post_json(
+            f"{base_url}/reset", {"task": "weather_roulette", "seed": 0}
+        )
+        o = _unwrap_obs(obs)
+        total = int(o.get("total_issues_count", 0) or o.get("pending_issues_count", 0))
+        assert total > 0, f"reset: total_issues_count={o.get('total_issues_count')!r}"
         print(f"  ok: /reset (total_issues_count={total})")
     except Exception as e:
         print(f"FAIL: /reset -> {e}")
         failures += 1
 
-    # 3. /step STAY_OUT
+    # 3. /step STAY_OUT  (F1Action: {command: "..."} per server shim)
     try:
-        r = post_json(f"{base_url}/step", {"action": {"command": "STAY_OUT"}})
+        r = _unwrap_obs(post_json(f"{base_url}/step", {"command": "STAY_OUT"}))
         assert r.get("done") is False, f"step STAY_OUT: done={r.get('done')}"
         print("  ok: /step STAY_OUT")
     except Exception as e:
@@ -115,8 +129,8 @@ def run(base_url: str) -> int:
 
     # 4. /step garbage → -0.02
     try:
-        r = post_json(f"{base_url}/step", {"action": {"command": "ZZZZ_NOT_A_COMMAND"}})
-        assert abs(r.get("reward", 0.0) - (-0.02)) < 1e-6, f"step garbage: reward={r.get('reward')}"
+        r = _unwrap_obs(post_json(f"{base_url}/step", {"command": "ZZZZ_NOT_A_COMMAND"}))
+        assert abs(float(r.get("reward", 0.0)) - (-0.02)) < 1e-5, f"step garbage: reward={r.get('reward')}"
         print("  ok: /step garbage (-0.02)")
     except Exception as e:
         print(f"FAIL: /step garbage -> {e}")
@@ -124,11 +138,21 @@ def run(base_url: str) -> int:
 
     # 5. /step DONE
     try:
-        r = post_json(f"{base_url}/step", {"action": {"command": "DONE"}})
+        r = _unwrap_obs(post_json(f"{base_url}/step", {"command": "DONE"}))
         assert r.get("done") is True, f"step DONE: done={r.get('done')}"
         print("  ok: /step DONE")
     except Exception as e:
         print(f"FAIL: /step DONE -> {e}")
+        failures += 1
+
+    # 6. /readme non-empty (HF OpenEnv playground sidebar)
+    try:
+        body = get_text(f"{base_url}/readme")
+        assert len(body.strip()) > 200, f"readme too short: {len(body)} chars"
+        assert "F1" in body or "Strategist" in body or "OpenEnv" in body, "readme missing expected content"
+        print("  ok: /readme (non-empty markdown for playground)")
+    except Exception as e:
+        print(f"FAIL: /readme -> {e}")
         failures += 1
 
     return failures
@@ -154,7 +178,7 @@ def main():
         if failures:
             print(f"\n{failures} check(s) failed.")
             sys.exit(1)
-        print("\nAll 5 checks passed.")
+        print("\nAll 6 checks passed.")
     finally:
         if proc is not None:
             proc.terminate()

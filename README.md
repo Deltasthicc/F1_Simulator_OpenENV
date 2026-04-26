@@ -157,19 +157,17 @@ python evaluate.py \
   --modes random untrained trained expert
 ```
 
-Held-out eval numbers (real LLM forward pass through env, 5 seeds × 6 scenarios):
+Held-out eval numbers (real LLM forward pass through env, 5 seeds × 4 core scenario families). Source: `results/eval_summary.json`.
 
 | scenario | random | untrained Qwen3-4B | **SFT+GRPO (grpo_v2)** | expert ceiling |
 |---|---:|---:|---:|---:|
 | dry_strategy_sprint | 0.400 | 0.509 | **0.520** | 0.840 |
-| weather_roulette | 0.344 | 0.414 | **0.965** | 0.950 |
-| late_safety_car | 0.332 | 0.525 | **0.645** | 0.935 |
-| championship_decider | 0.209 | 0.269 | **0.555** | 0.965 |
-| virtual_safety_car_window | 0.329 | 0.375 | **0.471** | 0.965 |
-| tyre_cliff_management | 0.204 | 0.398 | **0.552** | 0.965 |
-| **average** | **0.303** | **0.415** | **0.618** | **0.937** |
+| weather_roulette | 0.344 | 0.414 | **0.560** | 0.950 |
+| late_safety_car | 0.332 | 0.525 | **0.550** | 0.935 |
+| championship_decider | 0.209 | 0.269 | **0.520** | 0.965 |
+| **average** | **0.321** | **0.429** | **0.538** | **0.922** |
 
-Trained model lifts average **+0.20** over untrained Qwen3-4B and closes ~33% of the random→expert gap. Biggest single win: weather scenario where the trained model (0.965) actually edges out the rule-based expert (0.950) — investigation discipline pays off. Honest weakness: dry sprint stays at 0.52 (model rarely picks `PIT_NOW` — rare-event learning gap; see [`blog.md`](blog.md) for the full journey).
+Trained model lifts the four-family mean **+0.11** over untrained; largest family delta is **weather roulette** (+0.146). A separate single-seed Spa replay (see `results/race_story.png` and [`blog.md`](blog.md)) still hits **~0.95** on that trace; the table above is the multi-seed mean, which is lower. Honest weakness: dry sprint stays near 0.52 (the model under-uses `PIT_NOW` on rare undercut windows). Extended six-scenario evals (VSC window, tyre cliff) are in the evaluation script defaults but omitted here when the published `eval_summary.json` is a four-family run; re-run `evaluate.py` with all six task names to refresh the JSON and PNG together.
 
 `train.py` has two paths:
 

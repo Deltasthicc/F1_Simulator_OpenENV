@@ -31,5 +31,5 @@ Once we have it (post-training):
 
 1. Run the trained agent on this scenario via `inference.py`
 2. Compare its pit-lap call to the actual race winner's pit lap
-3. Compute "agent-vs-actual" deltas for the blog and video
+3. Compute "agent-vs-actual" deltas for the blog and other write-ups
 4. One paragraph in `demo-assets/blog-post.md` about the historical replay

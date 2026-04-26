@@ -37,8 +37,12 @@ ALLOW = [
     "results/comparison_real.png",
     "results/race_story.png",
     "results/track_grid.png",
+    "results/eval_curve.png",
+    "results/training_loss_curve.png",
+    "results/eval_summary.json",
     "results/eval_six_scenarios.json",
     "results/eval_six_scenarios.png",
+    "notebooks/f1_strategist_training_colab.ipynb",
     "demo-assets/**",
 ]
 
@@ -58,7 +62,6 @@ IGNORE = [
     "wandb/**",
     "datasets/**",
     "tests/**",
-    "notebooks/**",
     "scripts/**",
     "baselines/trajectories/**",
     ".pytest_cache/**",
@@ -66,10 +69,14 @@ IGNORE = [
     "*.safetensors",
     "*.bin",
     "*.pt",
-    "results/eval_*.png",
-    "results/eval_*.json",
+    "results/eval_iter*.png",
+    "results/eval_sft*.png",
+    "results/eval_shashwat*.png",
+    "results/eval_rft*.png",
+    "results/eval_grpo_v2*.png",
+    "results/eval_grpo_v2*.json",
     "results/ablation_*.png",
-    "results/eval_curve.png",
+    "results/pretrain_*.json",
 ]
 # But re-allow the specific eval files we *do* want
 KEEP = [
@@ -87,7 +94,7 @@ def main() -> None:
         repo_type="space",
         allow_patterns=ALLOW + KEEP,
         ignore_patterns=IGNORE,
-        commit_message="deploy: dev sync — grpo_v2 numbers, recommendations, hover fix",
+        commit_message="deploy: submission — results PNGs, notebook, blog, static UI",
     )
     print("Done.")
 

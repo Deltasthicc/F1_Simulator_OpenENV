@@ -61,6 +61,9 @@ captures/*.jsonl
 .ipynb_checkpoints/
 *-checkpoint.ipynb
 
+# Local duplicate notebook tree (not canonical; grpo_v1 copy)
+notebooks/F1_Simulator_OpenENV/
+
 # Allowlist exception: the canonical training notebook IS in git
 !notebooks/f1_strategist_training_colab.ipynb
 

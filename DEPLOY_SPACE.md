@@ -73,7 +73,7 @@ If `/reset` or `/step` return HTTP 500, the container likely crashed at import t
 Check the Space **Logs** tab for the traceback and patch either the Dockerfile or
 `server/`.
 
-After confirming, save the URL to `demo-assets/hf-space-link.txt` so the blog and video
+After confirming, save the URL to `demo-assets/hf-space-link.txt` so the blog and other
 deliverables can reference it:
 
 ```bash

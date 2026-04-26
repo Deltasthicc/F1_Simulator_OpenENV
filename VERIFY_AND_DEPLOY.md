@@ -122,7 +122,7 @@ python3 rollout.py --task weather_roulette --seed 7 --mode trained --render --ve
 Expected: prints lap-by-lap commands, ends with `score=0.~ trace=captures/...`,
 writes `captures/weather_roulette_trained_seed7.gif`. Open the GIF — you should
 see the track polygon, ego car circle, opponent dots, and a per-lap weather
-strip. This is the asset format that ships with the demo blog and video.
+strip. This is the asset format that ships with the demo blog.
 
 ### A.6 Heuristic inference end-to-end (~10 s)
 
@@ -549,8 +549,7 @@ mv captures/weather_roulette_trained_seed7.gif   demo-assets/trained-spa.gif
 ```
 
 Open both GIFs — the untrained should fumble the rain pit, the trained
-should call it correctly. Side-by-side these become the centrepiece of
-the video.
+should call it correctly. Side-by-side these are strong visuals for the blog and Space.
 
 ---
 
@@ -586,25 +585,13 @@ Publish on HF Hub:
 echo "https://huggingface.co/blog/your-handle/f1-strategist" > demo-assets/hf-blog-link.txt
 ```
 
-### F.3 Record and upload the video
+### F.3 Demo video (skipped)
 
-Follow the storyboard in `demo-assets/video-script.md`:
-1. Open `demo-assets/untrained-spa.gif` — record the screen at 1080p
-2. Cut to `demo-assets/trained-spa.gif`
-3. Cut to `results/eval_curve.png`
-4. Voice-over per the script
-
-Tools: OBS, QuickTime, DaVinci Resolve free. Target ≤1:50 runtime.
-
-Upload to YouTube unlisted-or-public:
-
-```bash
-echo "https://www.youtube.com/watch?v=YOUR_VIDEO_ID" > demo-assets/youtube-link.txt
-```
+No YouTube or other video for this submission. Use **Blog post** on the hackathon form; `demo-assets/video-script.md` states "not used."
 
 ### F.4 Update README links
 
-The README has placeholders for the Space, Colab, blog, and video links.
+The README has placeholders for the Space, Colab, and blog links.
 Replace them with the real URLs and commit.
 
 ```bash
@@ -623,7 +610,7 @@ Open `PRE_PUSH_CHECKLIST.md` and tick every item. The minimum required:
 - [ ] `tests/smoke_http.py` against the live Space passes
 - [ ] `results/eval_summary.json`, `eval_curve.png`, `training_loss_curve.png` all exist
 - [ ] `Deltasthic/f1-strategist-qwen3-4b-grpo` is public on HF Hub
-- [ ] `demo-assets/hf-space-link.txt`, `hf-blog-link.txt`, `youtube-link.txt` populated
+- [ ] `demo-assets/hf-space-link.txt`, `hf-blog-link.txt` populated (`youtube-link.txt` not used)
 - [ ] README links resolve in incognito
 - [ ] No secrets committed (`git log -p | grep -E "hf_[a-zA-Z0-9]{30,}"` returns empty)
 
@@ -634,7 +621,7 @@ git tag -a v1.0-finale -m "Meta PyTorch OpenEnv Hackathon Grand Finale submissio
 git push origin main --tags
 ```
 
-Submit the four URLs (GitHub, HF Space, blog, video) through the official
+Submit the URLs (GitHub if used, HF Space, blog, Colab) through the official
 hackathon form. Screenshot the confirmation:
 
 ```bash

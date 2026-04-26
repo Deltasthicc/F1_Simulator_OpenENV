@@ -64,6 +64,15 @@ COPY README.md     /app/README.md
 COPY blog.md       /app/blog.md
 COPY openenv       /app/openenv
 
+# Judge-visible plots (served at /static/hf-results/… — same files uploaded to HF repo)
+RUN mkdir -p /app/server/static/hf-results
+COPY results/eval_curve.png /app/server/static/hf-results/eval_curve.png
+COPY results/training_loss_curve.png /app/server/static/hf-results/training_loss_curve.png
+COPY results/race_story.png /app/server/static/hf-results/race_story.png
+COPY results/journey.png /app/server/static/hf-results/journey.png
+COPY results/track_grid.png /app/server/static/hf-results/track_grid.png
+COPY results/eval_six_scenarios.png /app/server/static/hf-results/eval_six_scenarios.png
+
 # ── Copy grpo_v1 LoRA adapter (132 MB) ────────────────────────────────────
 # Only copy the essential files; intermediate checkpoints are not needed.
 COPY grpo_v1/adapter_config.json        /app/grpo_v1/adapter_config.json

@@ -2,6 +2,8 @@
 
 **Deadline:** 26 April 5 PM IST. Last commit before this matters; nothing after.
 
+**Team decision (submission):** No YouTube video. Demo deliverables are **blog (`blog.md`) + Colab notebook + live Space** only. Skip **Section 6** (video) entirely.
+
 This is your ONE document. Walk it top-to-bottom. Every required step is here. Every artifact, every command, every URL.
 
 **Hard stop:** If the clock hits **4:00 PM IST and you haven't finished Section 7**, jump straight to Section 9 (Emergency fallback). The submission form takes ~2 minutes; preserve that buffer.
@@ -18,12 +20,12 @@ This is your ONE document. Walk it top-to-bottom. Every required step is here. E
 | 3 | Install the live track simulator on the landing page | 15 min |
 | 4 | Re-render before/after GIFs (only if model behavior changed) | 10 min via SSH |
 | 5 | Check the model card on HF Hub | 2 min |
-| 6 | Record + upload video | 75 min |
+| 6 | *(Skipped — no video; blog + Colab + Space only)* | — |
 | 7 | Final pre-push checklist (10-step) | 15 min |
 | 8 | Tag + final push + submit | 5 min |
 | 9 | Emergency fallback (if partner can't fix in time) | 20 min |
 
-**Total best case: ~2.5 hours.** Worst case (skip video, use fallback): 1 hour.
+**Total best case: ~2 hours** with no video work.
 
 ---
 
@@ -53,7 +55,7 @@ Open in **incognito browser**:
   ```powershell
   python tests\smoke_http.py --base-url https://Deltasthic-f1-strategist.hf.space
   ```
-  Should print "All 5 checks passed".
+  Should print "All 6 checks passed" (includes non-empty `/readme` for the playground sidebar).
 
 ### 0.3 Pre-fill the submission form (save draft, don't submit)
 
@@ -62,10 +64,10 @@ Open in **incognito browser**:
 | Email | `shashwat.rajan2005@gmail.com` |
 | HF Space URL | `https://huggingface.co/spaces/Deltasthic/f1-strategist` |
 | Training Run Notebook URL | `https://huggingface.co/spaces/Deltasthic/f1-strategist/blob/main/notebooks/f1_strategist_training_colab.ipynb` |
-| Demo type | **Blog Post** (toggle this) — switch to YouTube only if you record a video |
+| Demo type | **Blog Post** only (no video) |
 | Blog URL | `https://huggingface.co/spaces/Deltasthic/f1-strategist/blob/main/blog.md` |
 
-Save draft. The URL won't change; only the Demo Type radio button might switch to YouTube later if you finish a video.
+Save draft.
 
 ---
 
@@ -325,79 +327,9 @@ If any of those is missing, click "Edit model card" and patch it now. 5-minute f
 
 ---
 
-## 6. Record + upload video
+## 6. Video (out of scope for this submission)
 
-Storytelling is 30% of the score. The video is the highest-leverage remaining item. **Budget 75 minutes max.** If you're past 3:30 PM IST, skip this section and stick with the blog as your demo deliverable — at that point the deadline buffer matters more.
-
-### 6.1 Pre-record setup
-
-- Open in browser tabs (and arrange windows):
-  1. `https://huggingface.co/spaces/Deltasthic/f1-strategist` (landing page)
-  2. `results/eval_curve.png` (open from your local results/ folder)
-  3. `demo-assets/trained-spa.gif` and `untrained-spa.gif` (open as separate tabs or in your image viewer)
-  4. `https://colab.research.google.com/.../f1_strategist_training_colab.ipynb`
-- Open OBS Studio (free) or Windows Game Bar (Win+G) for screen recording
-- Phone in voice memo mode, 6 inches from your face
-- Quiet room
-
-### 6.2 Recording script (target 1:30–1:50)
-
-The full script is in our chat history under "Video Script — F1 Strategist". Print it on a separate window or piece of paper. Eight beats:
-
-| # | Time | Visual | Spoken (~280 words total) |
-|---|---|---|---|
-| 1 | 0:00–0:08 | trained-spa.gif full screen | The hook: "Lap 8 of 12 at Spa..." |
-| 2 | 0:08–0:25 | Landing page → tags → action vocabulary | "We built F1 Strategist..." |
-| 3 | 0:25–0:50 | Interactive panel → Reset → INSPECT → step | "Each lap, the model sees..." |
-| 4 | 0:50–1:10 | training_loss_curve.png → model card | "We trained Qwen3-4B using GRPO..." |
-| 5 | 1:10–1:30 | eval_curve.png → trained-spa.gif vs untrained-spa.gif | "Before training, point four..." |
-| 6 | 1:30–1:42 | Landing page scenario click → Colab notebook | "Everything's live..." |
-| 7 | 1:42–1:48 | Static title card with three URLs | Outro |
-
-Use the actual numbers from your synced README/blog (i.e. partner's honest eval). **If trained scores are 0.62/0.71/0.65/0.40 instead of 0.93/0.94/0.94/0.54, say those.** Honesty over polish.
-
-### 6.3 Record
-
-Single take. Don't edit. If you stumble, redo it.
-
-### 6.4 Upload to YouTube
-
-- Set visibility to **Unlisted** (faster than waiting for Public review)
-- Title: `F1 Strategist — Training an LLM as a Race Engineer with GRPO`
-- Description: paste your blog's first paragraph + the four submission URLs
-- Click Publish, copy the URL
-
-### 6.5 Update README + form
-
-```powershell
-notepad demo-assets\youtube-link.txt
-# Replace the placeholder with your YouTube URL, save
-```
-
-Open `README.md` in your editor, find the line:
-
-```
-| Demo video | [YouTube — link in demo-assets/youtube-link.txt](demo-assets/youtube-link.txt) |
-```
-
-Replace with:
-
-```
-| Demo video | [YouTube](PASTE_REAL_YOUTUBE_URL) |
-```
-
-Then commit and push:
-
-```powershell
-git add demo-assets/youtube-link.txt README.md
-git commit -m "lock youtube video URL"
-git push origin main
-python push_to_space.py "lock youtube URL"
-```
-
-### 6.6 Update form draft
-
-Open the saved form. Switch the Demo type radio button to **YouTube Demo Video**. Paste the YouTube URL. Save draft. (Don't submit yet.)
+**Do not** record, upload, or link a YouTube (or any) demo video. The team is submitting **Blog post** on the form: `blog.md` on the Space, plus the Colab notebook and live Space. Leave any video field empty; do not add `demo-assets/youtube-link.txt` beyond the existing “not used” placeholder.
 
 ---
 
@@ -423,15 +355,15 @@ Open the saved form. Switch the Demo type radio button to **YouTube Demo Video**
 - [ ] HF Space frontmatter (YAML at top) intact: `title`, `emoji`, `sdk: docker`, `app_port: 8000`
 - [ ] Notebook URL points to **HF Space**, not private GitHub
 - [ ] Blog URL points to `blog.md` on HF Space
-- [ ] Video URL is YouTube (or omitted if no video)
+- [ ] No demo video linked (blog-only; README has no YouTube line)
 - [ ] All `results/*.png` referenced actually exist
 - [ ] Trained numbers in README match `results/eval_summary.json` (run sync if not)
 
 ### 7.3 Phase 1 (Environment) gating
 
 - [ ] `python -m server.app` starts without errors
-- [ ] `python tests\smoke_http.py` passes 5/5 locally
-- [ ] `python tests\smoke_http.py --base-url https://Deltasthic-f1-strategist.hf.space` passes 5/5 against live Space
+- [ ] `python tests\smoke_http.py` passes 6/6 locally
+- [ ] `python tests\smoke_http.py --base-url https://Deltasthic-f1-strategist.hf.space` passes 6/6 against live Space
 - [ ] `python -m pytest tests/ -q` — all tests pass
 
 ### 7.4 Phase 2 (Scenarios + Scoring)
@@ -459,15 +391,15 @@ Open the saved form. Switch the Demo type radio button to **YouTube Demo Video**
 - [ ] Track map renders on the live page (open in incognito, click RUN RACE)
 - [ ] Before/after GIFs in `demo-assets/`
 - [ ] `demo-assets/trained-rollout-transcript.txt` exists
-- [ ] `demo-assets/youtube-link.txt` populated if you recorded video; otherwise leave blog as the demo deliverable
+- [ ] `demo-assets/youtube-link.txt` remains the “not used” placeholder (no video)
 
 ### 7.8 Submission requirements W1–W4
 
 - [ ] **W1** — `pip show openenv-core` shows ≥ 0.2.3
 - [ ] **W1** — Notebook committed and runnable from HF Space
 - [ ] **W2** — HF Space exists, public, Running
-- [ ] **W3** — Blog at HF Space `blog.md` URL OR YouTube video
-- [ ] **W4** — README links: HF Space, Notebook, blog, eval_curve.png, training_loss_curve.png, model weights
+- [ ] **W3** — Blog at HF Space `blog.md` URL (demo type: Blog post)
+- [ ] **W4** — README links: HF Space, Notebook, blog, eval_curve.png, training_loss_curve.png, model weights (no video)
 
 ### 7.9 Theme alignment
 
@@ -528,7 +460,6 @@ Open all six URLs in incognito. Each must load:
 - [ ] `https://huggingface.co/spaces/Deltasthic/f1-strategist/blob/main/blog.md`
 - [ ] `https://huggingface.co/spaces/Deltasthic/f1-strategist/blob/main/notebooks/f1_strategist_training_colab.ipynb`
 - [ ] `https://huggingface.co/Deltasthic/f1-strategist-qwen3-4b-grpo`
-- [ ] YouTube URL (if video recorded)
 - [ ] (If applicable) GitHub repo URL
 
 ### 8.4 Submit the form
@@ -587,7 +518,7 @@ python push_to_space.py "fallback: honest interim blog"
 
 ### 9.3 Submit before 5 PM
 
-Skip the video if you haven't recorded it. Use the blog URL as the demo deliverable.
+Use the blog URL as the demo deliverable (Blog post on the form).
 
 **Honest narrative + working environment + evidence of training + valid notebook > polished narrative + missed deadline.** Submit.
 
@@ -608,7 +539,6 @@ Skip the video if you haven't recorded it. Use the blog URL as the demo delivera
 | HF Space | `https://huggingface.co/spaces/Deltasthic/f1-strategist` |
 | Notebook | `https://huggingface.co/spaces/Deltasthic/f1-strategist/blob/main/notebooks/f1_strategist_training_colab.ipynb` |
 | Blog (default) | `https://huggingface.co/spaces/Deltasthic/f1-strategist/blob/main/blog.md` |
-| YouTube (if recorded) | _from `demo-assets/youtube-link.txt`_ |
 | Trained model | `https://huggingface.co/Deltasthic/f1-strategist-qwen3-4b-grpo` |
 
 ---

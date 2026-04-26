@@ -316,9 +316,9 @@ def _load_model_with_lora(model_name: str, args):
                 load_in_4bit=False,
                 fast_inference=True,
                 trust_remote_code=False,
-                        max_lora_rank=16,
-            gpu_memory_utilization=0.30,
-        )
+                max_lora_rank=16,
+                gpu_memory_utilization=0.30,
+            )
             model = FastLanguageModel.get_peft_model(
                 model,
                 r=16,

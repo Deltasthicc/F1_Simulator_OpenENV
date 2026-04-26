@@ -45,6 +45,9 @@ runs/
 wandb/
 .cache/
 
+# Unsloth runtime build cache (regenerated on each training run)
+unsloth_compiled_cache/
+
 # Eval artefacts (KEEP results/, just exclude the giant raw artefacts)
 results/raw_rollouts/
 results/*.npy

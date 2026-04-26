@@ -1,7 +1,7 @@
 ---
 base_model: unsloth/Qwen3-4B
 library_name: peft
-model_name: grpo_v1
+model_name: grpo_v2
 tags:
 - base_model:adapter:unsloth/Qwen3-4B
 - grpo
@@ -13,7 +13,7 @@ licence: license
 pipeline_tag: text-generation
 ---
 
-# Model Card for grpo_v1
+# Model Card for grpo_v2
 
 This model is a fine-tuned version of [unsloth/Qwen3-4B](https://huggingface.co/unsloth/Qwen3-4B).
 It has been trained using [TRL](https://github.com/huggingface/trl).

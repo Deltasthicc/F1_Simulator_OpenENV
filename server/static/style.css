@@ -613,11 +613,24 @@ svg .pit-pulse  { fill: var(--red); }
 
 .links-row { display: flex; gap: 12px; flex-wrap: wrap; opacity: 0; transform: translateY(10px); transition: opacity 400ms 200ms, transform 400ms 200ms; }
 .links-row.revealed { opacity: 1; transform: translateY(0); }
-.link-btn { display: inline-block; padding: 10px 20px; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; text-decoration: none; transition: background 150ms, color 150ms; cursor: pointer; }
+.link-btn { display: inline-block; padding: 10px 20px; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; text-decoration: none; transition: background 180ms ease, color 180ms ease, border-color 180ms ease, transform 180ms ease, box-shadow 180ms ease; cursor: pointer; border: 1px solid transparent; }
 .link-btn { background: var(--red); color: #fff; }
-.link-btn:hover { background: #ff2010; }
+/* Solid (red) variant: subtle lift + slight brighten, not a flat color flip */
+.link-btn:not(.link-btn--ghost):hover {
+  background: #ff2010;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(225,6,0,0.35);
+}
 .link-btn--ghost { background: transparent; color: var(--ink); border: 1px solid var(--rule); }
-.link-btn--ghost:hover { border-color: var(--red); color: var(--red); }
+/* Ghost variant: keep transparent, accent the border + text in red, faint red glow.
+   Explicit `background` override prevents inheriting the solid red flood from the base rule. */
+.link-btn--ghost:hover {
+  background: rgba(225,6,0,0.06);
+  border-color: var(--red);
+  color: var(--red);
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 1px rgba(225,6,0,0.18) inset;
+}
 
 /* ── TEAM ───────────────────────────────────────────── */
 /* team section — names only, no cards */

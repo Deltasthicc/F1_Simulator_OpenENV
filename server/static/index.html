@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>F1 Strategist — LLM Race Engineer</title>
 <meta name="description" content="OpenEnv environment for training LLM Formula 1 race strategists via GRPO. Theme #2 long-horizon planning. Meta PyTorch OpenEnv Hackathon Grand Finale 2026.">
-<link rel="stylesheet" href="/static/style.css?v=20260426-grpov2">
+<link rel="stylesheet" href="/static/style.css?v=20260426-hover">
 </head>
 <body>
 <canvas id="bg"></canvas>
@@ -402,20 +402,21 @@ curl -X POST .../simulate \
     <div class="evidence-sub-label" style="margin-bottom:16px" data-reveal>RACE STORY · TRAINING CURVE · TRACK GRID</div>
     <div class="png-gallery" data-reveal>
 
-      <!-- Hero: race story (full width) -->
+      <!-- Hero: GRPO v2 reward curve (full width) -->
       <figure class="png-fig-hero">
-        <img src="https://raw.githubusercontent.com/Deltasthicc/F1_Simulator_OpenENV/main/results/race_story.png"
-             alt="Race story: untrained vs trained — position, tyre health, 6-dim score breakdown"
+        <img src="https://raw.githubusercontent.com/Deltasthicc/F1_Simulator_OpenENV/dev/results/grpo_v2_reward_curve.png"
+             alt="GRPO v2 training reward curve — 200 steps from real trainer_state.json"
              loading="lazy">
-        <figcaption class="png-caption">Race story — Weather Roulette · Spa · seed 7 · untrained (left) vs GRPO-trained (right)</figcaption>
+        <figcaption class="png-caption">GRPO v2 reward curve — 200 steps from SFT v3 base · real points from <code>trainer_state.json</code> · peak 0.93</figcaption>
       </figure>
 
       <!-- Bottom row -->
       <div class="png-pair">
         <figure class="png-fig">
-          <img src="https://raw.githubusercontent.com/Deltasthicc/F1_Simulator_OpenENV/dev/results/grpo_v2_reward_curve.png"
-               alt="GRPO v2 training reward curve — 200 steps from real trainer_state.json" loading="lazy">
-          <figcaption class="png-caption">GRPO v2 reward curve — 200 steps from SFT v3 base · real points from <code>trainer_state.json</code> · peak 0.93</figcaption>
+          <img src="https://raw.githubusercontent.com/Deltasthicc/F1_Simulator_OpenENV/main/results/race_story.png"
+               alt="Race story: untrained vs trained — position, tyre health, 6-dim score breakdown"
+               loading="lazy">
+          <figcaption class="png-caption">Race story — Weather Roulette · Spa · seed 7 · untrained (left) vs GRPO-trained (right)</figcaption>
         </figure>
         <figure class="png-fig">
           <img src="https://raw.githubusercontent.com/Deltasthicc/F1_Simulator_OpenENV/main/results/track_grid.png"
@@ -466,6 +467,51 @@ curl -X POST .../simulate \
         <div style="font-size:10px; letter-spacing:0.28em; color:var(--red); text-transform:uppercase; margin-bottom:6px;">Bug 5 · GRPO collapse</div>
         <p style="font-size:13px; line-height:1.55; color:var(--ink); margin:0;">Cold GRPO from base Qwen3 hit reward-variance collapse by step 200. Fix: SFT warm-start <em>first</em>, then GRPO. Each layer added what the other couldn't — the breakthrough.</p>
       </div>
+    </div>
+
+    <!-- Recommendations / how to push this further -->
+    <div data-reveal style="margin-top:48px; padding-top:32px; border-top:1px solid var(--rule);">
+      <div style="font-size:10px; letter-spacing:0.28em; color:var(--red); text-transform:uppercase; margin-bottom:12px; text-align:center;">Where we'd take this next</div>
+      <h3 style="font-size:18px; color:var(--ink); text-align:center; margin:0 0 22px 0; font-weight:500;">Concrete starting points to push past 0.62</h3>
+      <p style="font-size:13px; line-height:1.6; color:var(--dim); text-align:center; max-width:760px; margin:0 auto 28px;">
+        Closing the 0.30 gap to expert isn't a single fix — it's a tier list of changes. Ranked by expected ROI per hour of work, the things we'd start with:
+      </p>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:20px; max-width:1100px; margin:0 auto;">
+
+        <div style="border:1px solid var(--rule); padding:18px 22px; background:#0f0f0f;">
+          <div style="font-size:9px; letter-spacing:0.24em; color:var(--gold); text-transform:uppercase; margin-bottom:8px;">Tier 1 · high ROI · days</div>
+          <ul style="margin:0; padding-left:18px; font-size:13px; line-height:1.6; color:var(--ink);">
+            <li><strong>Larger base model</strong> — Qwen2.5-7B / Qwen3-14B. Likely +0.10 from raw capacity alone. 3× wall-clock.</li>
+            <li><strong>PIT-rate reward shaping</strong> — explicit GRPO penalty when an episode finishes without satisfying the FIA two-compound rule. Directs gradient toward correct pit timing. +0.05–0.08 on dry/champ.</li>
+            <li><strong>Multi-round RFT</strong> — DeepSeek-Math style: 3–5 rounds of best-of-16 sampling + fine-tune. Compounds gradually. +0.03 per round.</li>
+          </ul>
+        </div>
+
+        <div style="border:1px solid var(--rule); padding:18px 22px; background:#0f0f0f;">
+          <div style="font-size:9px; letter-spacing:0.24em; color:var(--teal); text-transform:uppercase; margin-bottom:8px;">Tier 2 · moderate · ~1 week each</div>
+          <ul style="margin:0; padding-left:18px; font-size:13px; line-height:1.6; color:var(--ink);">
+            <li><strong>Curriculum learning</strong> — train on dry sprint to convergence, layer in harder families. +0.05 on champ.</li>
+            <li><strong>CoT-with-data rebuild</strong> — regenerate SFT data with explicit reasoning chains in the assistant turn so the model learns to <em>reason</em> before committing.</li>
+            <li><strong>Self-play opponents</strong> — replace rule-based opponents with a weaker copy of the training model so the env keeps providing signal as capability grows.</li>
+            <li><strong>Verifier-style auxiliary reward</strong> — "did this action match what the expert would do?" as a per-step shaping signal alongside the existing 6-dim reward.</li>
+          </ul>
+        </div>
+
+        <div style="border:1px solid var(--rule); padding:18px 22px; background:#0f0f0f;">
+          <div style="font-size:9px; letter-spacing:0.24em; color:var(--orange); text-transform:uppercase; margin-bottom:8px;">Tier 3 · research-grade · weeks-months</div>
+          <ul style="margin:0; padding-left:18px; font-size:13px; line-height:1.6; color:var(--ink);">
+            <li><strong>Procedural scenario diversity</strong> — sample across thousands of generated seeds during GRPO instead of 100 hand-authored ones.</li>
+            <li><strong>Policy distillation</strong> — train Qwen3-4B with the full pipeline, distil to Qwen2.5-1.5B. ~80% of the score, 4× faster inference.</li>
+            <li><strong>True multi-turn dialogue training</strong> — full rollouts where the model conditions on its own action history, with a careful curriculum (we tried it once and tanked champ — needs nuance).</li>
+            <li><strong>Replace Unsloth or upgrade TRL</strong> — currently pinned to TRL 0.18.2 because Unsloth's GRPO assumes ≥0.22. Either fork the patch or migrate the stack.</li>
+          </ul>
+        </div>
+      </div>
+
+      <p style="font-size:12px; line-height:1.55; color:var(--dim); text-align:center; max-width:760px; margin:24px auto 0;">
+        Full tier list with rationale lives in <a href="/blog" target="_blank" style="color:var(--red);">blog.md</a> under "What's next — concrete starting points". This is the document we'd hand to the person picking this up next.
+      </p>
     </div>
 
     <div data-reveal style="margin-top:32px; text-align:center; font-size:13px; color:var(--dim);">

@@ -35,7 +35,24 @@ RUN pip install --no-cache-dir \
     "peft>=0.13.2" \
     "accelerate>=1.3" \
     "sentencepiece" \
-    "protobuf"
+    "protobuf" \
+    "psutil"
+
+# ── Pre-cache Qwen3-0.6B so /simulate?model=qwen3 loads instantly ──────────
+# ~1.5 GB download; baked into the image so runtime has zero network wait.
+ENV HF_HOME=/app/.cache/huggingface
+ENV TRANSFORMERS_CACHE=/app/.cache/huggingface
+RUN python - <<'PYEOF'
+import os, torch
+os.environ.setdefault("HF_HOME", "/app/.cache/huggingface")
+from transformers import AutoTokenizer, AutoModelForCausalLM
+print("Pre-caching Qwen/Qwen3-0.6B ...")
+AutoTokenizer.from_pretrained("Qwen/Qwen3-0.6B", trust_remote_code=True)
+m = AutoModelForCausalLM.from_pretrained(
+    "Qwen/Qwen3-0.6B", torch_dtype=torch.float16, low_cpu_mem_usage=True, trust_remote_code=True)
+del m
+print("Qwen/Qwen3-0.6B cached OK")
+PYEOF
 
 # ── Copy application code ──────────────────────────────────────────────────
 COPY models.py     /app/models.py
@@ -61,9 +78,6 @@ COPY grpo_v1/training_args.bin          /app/grpo_v1/training_args.bin
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 ENV ENABLE_WEB_INTERFACE=1
-# Cache HF downloads inside the container so they persist across restarts
-ENV HF_HOME=/app/.cache/huggingface
-ENV TRANSFORMERS_CACHE=/app/.cache/huggingface
 
 EXPOSE 8000
 

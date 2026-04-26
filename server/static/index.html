@@ -366,10 +366,10 @@
         <div class="sim-field">
           <label class="sim-field-label" for="sim-model">POLICY</label>
           <select id="sim-model">
-            <option value="heuristic">heuristic (rule-based, fast)</option>
-            <option value="random">random (baseline)</option>
-            <option value="grpo_v1">GRPO v1 (trained checkpoint)</option>
-            <option value="qwen3">Qwen3-0.6B (raw LLM, no training)</option>
+            <option value="heuristic">heuristic — rule-based, instant</option>
+            <option value="random">random — baseline</option>
+            <option value="qwen3">Qwen3-0.6B — raw LLM, ~60s</option>
+            <option value="grpo_v1">GRPO v1 — trained (GPU required; shows reference score)</option>
           </select>
         </div>
         <button id="sim-run-btn" class="sim-run-btn">▶ RUN RACE</button>

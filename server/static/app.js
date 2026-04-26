@@ -664,12 +664,23 @@ function setupSimWidget() {
 
   if (!scenarioSel) return;
 
+  const widgetLabel = document.getElementById("sim-widget-label");
+  const POLICY_LABELS = {
+    heuristic: "heuristic (rule-based)",
+    random:    "random (baseline)",
+    grpo_v1:  "GRPO v1 (trained checkpoint)",
+    qwen3:    "Qwen3-0.6B (raw LLM)",
+  };
+
   function updateCmd() {
     const task  = scenarioSel.value;
     const seed  = seedSel.value;
     const model = modelSel ? modelSel.value : "heuristic";
-    const modelFlag = model === "heuristic" ? "" : ` --model ${model}`;
+    const modelMap = { heuristic: "heuristic", random: "random", grpo_v1: "./grpo_v1", qwen3: "Qwen/Qwen3-0.6B" };
+    const modelArg = modelMap[model] || model;
+    const modelFlag = model === "heuristic" ? "" : ` --model ${modelArg}`;
     if (cmdPre) cmdPre.textContent = `python inference.py --task ${task} --seed ${seed}${modelFlag}`;
+    if (widgetLabel) widgetLabel.textContent = `LIVE RACE SIMULATOR — ${POLICY_LABELS[model] || model}`;
   }
   scenarioSel.addEventListener("change", updateCmd);
   seedSel.addEventListener("change", updateCmd);
@@ -819,8 +830,10 @@ function setupSimWidget() {
       }
 
       // Done
+      const policyLabel = data.policy || req.model;
+      const noteText = data.policy_note ? ` · ${data.policy_note}` : "";
       if (statusEl) {
-        statusEl.textContent = `done — P${data.final_pos} · score ${data.final_score.toFixed(3)}`;
+        statusEl.textContent = `done — P${data.final_pos} · score ${data.final_score.toFixed(3)} · ${policyLabel}${noteText}`;
         statusEl.className = "sim-out-status done";
       }
       showResult(data);

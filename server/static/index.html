@@ -250,27 +250,32 @@
       </div>
     </div>
 
-    <!-- PNG gallery from GitHub raw -->
-    <div class="evidence-sub-label" style="margin-bottom:16px" data-reveal>RACE STORY · TRACK GRID · TRAINING LOSS</div>
+    <!-- PNG gallery from GitHub raw — race story hero + 2-col row below -->
+    <div class="evidence-sub-label" style="margin-bottom:16px" data-reveal>RACE STORY · TRAINING CURVE · TRACK GRID</div>
     <div class="png-gallery" data-reveal>
-      <figure class="png-fig">
+
+      <!-- Hero: race story (full width) -->
+      <figure class="png-fig-hero">
         <img src="https://raw.githubusercontent.com/Deltasthicc/F1_Simulator_OpenENV/main/results/race_story.png"
-             alt="Race story: untrained vs trained position, tyre health, 6-dim score breakdown"
+             alt="Race story: untrained vs trained — position, tyre health, 6-dim score breakdown"
              loading="lazy">
-        <figcaption>Race story — Weather Roulette Spa · untrained vs trained · position / tyre / score</figcaption>
+        <figcaption class="png-caption">Race story — Weather Roulette · Spa · seed 7 · untrained (left) vs GRPO-trained (right)</figcaption>
       </figure>
+
+      <!-- Bottom row -->
       <div class="png-pair">
         <figure class="png-fig">
           <img src="https://raw.githubusercontent.com/Deltasthicc/F1_Simulator_OpenENV/main/results/training_loss_curve.png"
-               alt="GRPO training reward and loss curve" loading="lazy">
-          <figcaption>GRPO reward curve — 800 steps</figcaption>
+               alt="GRPO training reward curve — 800 steps" loading="lazy">
+          <figcaption class="png-caption">GRPO reward curve — 800 training steps · Qwen3-4B + LoRA · RTX 5090</figcaption>
         </figure>
         <figure class="png-fig">
           <img src="https://raw.githubusercontent.com/Deltasthicc/F1_Simulator_OpenENV/main/results/track_grid.png"
-               alt="Track grid — 8 circuits with expert policy scores" loading="lazy">
-          <figcaption>8 circuits — expert policy scores</figcaption>
+               alt="Track grid — 8 circuits with expert policy" loading="lazy">
+          <figcaption class="png-caption">Expert policy across 8 F1 circuits — scene generalization</figcaption>
         </figure>
       </div>
+
     </div>
   </div>
 </section>
@@ -335,7 +340,7 @@
 
     <!-- ── Scenario picker + RUN button ── -->
     <div class="sim-widget" data-reveal>
-      <div class="sim-widget-label">LIVE RACE SIMULATOR — heuristic policy</div>
+      <div class="sim-widget-label" id="sim-widget-label">LIVE RACE SIMULATOR — heuristic policy</div>
       <div class="sim-controls">
         <div class="sim-field">
           <label class="sim-field-label" for="sim-scenario">SCENARIO</label>
@@ -363,6 +368,8 @@
           <select id="sim-model">
             <option value="heuristic">heuristic (rule-based, fast)</option>
             <option value="random">random (baseline)</option>
+            <option value="grpo_v1">GRPO v1 (trained checkpoint)</option>
+            <option value="qwen3">Qwen3-0.6B (raw LLM, no training)</option>
           </select>
         </div>
         <button id="sim-run-btn" class="sim-run-btn">▶ RUN RACE</button>

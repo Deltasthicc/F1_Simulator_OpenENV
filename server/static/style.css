@@ -368,24 +368,38 @@ svg .pit-pulse  { fill: var(--red); }
 .cl-untrained{ color: var(--orange); }
 .curve-caption { font-size: 10px; color: var(--dim); margin-top: 6px; letter-spacing: 0.05em; }
 
-/* PNG gallery */
+/* PNG gallery — stacked: hero full-width, then two side-by-side below */
 .png-gallery {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
   opacity: 0; transform: translateY(14px);
   transition: opacity 500ms, transform 500ms;
 }
 .png-gallery.revealed { opacity: 1; transform: translateY(0); }
-.png-pair { display: flex; flex-direction: column; gap: 16px; }
+/* Hero image (race story) — full width */
+.png-fig-hero { border: 1px solid var(--rule); overflow: hidden; }
+.png-fig-hero img {
+  width: 100%; height: auto;
+  display: block; background: #0c0c0c;
+}
+/* Bottom row: training curve + track grid side by side */
+.png-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
 .png-fig { border: 1px solid var(--rule); overflow: hidden; }
 .png-fig img {
-  width: 100%; height: 340px;
+  width: 100%; height: auto;
   display: block; background: #0c0c0c;
-  object-fit: contain; object-position: center;
-  transition: opacity 300ms;
 }
-.png-fig img:not([src]) { min-height: 120px; }
+.png-fig img:not([src]), .png-fig-hero img:not([src]) { min-height: 120px; }
+.png-caption {
+  display: block; padding: 8px 12px;
+  font-size: 10px; color: var(--dim); letter-spacing: 0.05em;
+  border-top: 1px solid var(--rule);
+}
 .png-fig figcaption { padding: 8px 12px; font-size: 10px; color: var(--dim); letter-spacing: 0.05em; border-top: 1px solid var(--rule); }
 
 /* ── MEDIA section ──────────────────────────────────── */

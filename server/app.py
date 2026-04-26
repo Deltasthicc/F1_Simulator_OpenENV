@@ -123,26 +123,86 @@ def simulate_episode(req: SimulateRequest) -> dict[str, Any]:
         env = F1StrategistEnvironment()
         obs = env.reset(task=req.task, seed=req.seed)
 
-        # Lazy-import heuristic only when needed (avoids import errors for random mode)
-        heuristic_fn = None
-        parse_fn = None
-        SYSTEM_PROMPT_TEXT = ""
-        if policy_name not in ("random",):
-            try:
-                import sys, pathlib
-                # Ensure project root is on sys.path when running inside server/
-                _root = str(pathlib.Path(__file__).parent.parent)
-                if _root not in sys.path:
-                    sys.path.insert(0, _root)
-                from inference import _heuristic_generator as _h, parse_action as _p, SYSTEM_PROMPT as _sp
-                heuristic_fn = _h
-                parse_fn = _p
-                SYSTEM_PROMPT_TEXT = _sp
-            except Exception:
-                # Fall back to random if inference import fails
-                policy_name = "random"
+        # Build the generator based on requested model
+        import sys as _sys, pathlib as _pl
+        _root = str(_pl.Path(__file__).parent.parent)
+        if _root not in _sys.path:
+            _sys.path.insert(0, _root)
 
-        history: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT_TEXT}]
+        from inference import _heuristic_generator as _heur, parse_action as _parse, SYSTEM_PROMPT as _sysprompt
+
+        policy_note = ""
+        generator = None  # callable(history, obs, task) -> str, or None for random
+
+        if policy_name == "random":
+            pass  # generator stays None
+
+        elif policy_name in ("grpo_v1", "grpo"):
+            # Try to load the trained LoRA checkpoint
+            checkpoint = _pl.Path(__file__).parent.parent / "grpo_v1"
+            if checkpoint.exists():
+                try:
+                    from transformers import AutoModelForCausalLM, AutoTokenizer
+                    import torch
+                    _tok = AutoTokenizer.from_pretrained(str(checkpoint), trust_remote_code=True)
+                    _dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
+                    _lm  = AutoModelForCausalLM.from_pretrained(
+                        str(checkpoint), torch_dtype=_dtype,
+                        device_map="auto", trust_remote_code=True,
+                    )
+                    def generator(history, obs, task):
+                        if hasattr(_tok, "apply_chat_template"):
+                            txt = _tok.apply_chat_template(history, tokenize=False, add_generation_prompt=True)
+                        else:
+                            txt = "\n".join(f"{m['role']}: {m['content']}" for m in history) + "\nassistant:"
+                        inp = _tok(txt, return_tensors="pt").to(_lm.device)
+                        with torch.no_grad():
+                            out = _lm.generate(**inp, max_new_tokens=64, do_sample=False)
+                        return _tok.decode(out[0][inp["input_ids"].shape[-1]:], skip_special_tokens=True)
+                    policy_name = "grpo_v1"
+                    policy_note = "Loaded grpo_v1 checkpoint."
+                except Exception as _e:
+                    generator = _heur
+                    policy_name = "grpo_v1 (heuristic fallback)"
+                    policy_note = f"Checkpoint found but transformers load failed: {_e}. Using heuristic."
+            else:
+                generator = _heur
+                policy_name = "grpo_v1 (heuristic fallback)"
+                policy_note = "grpo_v1 checkpoint not present on this server. Using heuristic stand-in."
+
+        elif policy_name in ("qwen3", "qwen3-0.6b", "llm"):
+            try:
+                from transformers import AutoModelForCausalLM, AutoTokenizer
+                import torch
+                _model_id = "Qwen/Qwen3-0.6B"
+                _tok = AutoTokenizer.from_pretrained(_model_id, trust_remote_code=True)
+                _dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
+                _lm  = AutoModelForCausalLM.from_pretrained(
+                    _model_id, torch_dtype=_dtype,
+                    device_map="auto", trust_remote_code=True,
+                )
+                def generator(history, obs, task):
+                    if hasattr(_tok, "apply_chat_template"):
+                        txt = _tok.apply_chat_template(history, tokenize=False, add_generation_prompt=True)
+                    else:
+                        txt = "\n".join(f"{m['role']}: {m['content']}" for m in history) + "\nassistant:"
+                    inp = _tok(txt, return_tensors="pt").to(_lm.device)
+                    with torch.no_grad():
+                        out = _lm.generate(**inp, max_new_tokens=64, do_sample=False)
+                    return _tok.decode(out[0][inp["input_ids"].shape[-1]:], skip_special_tokens=True)
+                policy_name = "qwen3-0.6b"
+                policy_note = "Loaded Qwen/Qwen3-0.6B from HuggingFace Hub."
+            except Exception as _e:
+                generator = _heur
+                policy_name = "qwen3 (heuristic fallback)"
+                policy_note = f"Could not load Qwen3-0.6B ({_e}). Using heuristic stand-in."
+
+        else:
+            # Default: heuristic
+            generator = _heur
+            policy_name = "heuristic"
+
+        history: list[dict] = [{"role": "system", "content": _sysprompt}]
         laps: list[dict] = []
         safety_limit = max(obs.total_laps + 5, 60)
 
@@ -151,15 +211,15 @@ def simulate_episode(req: SimulateRequest) -> dict[str, Any]:
                 break
 
             # Choose action
-            if policy_name == "random":
+            if generator is None:
+                # Random policy
                 action_str = _random.choice(_RANDOM_ACTIONS)
                 if obs.current_lap >= obs.total_laps:
                     action_str = "DONE"
             else:
-                # Heuristic / grpo (heuristic used as stand-in when checkpoint unavailable)
                 history.append({"role": "user", "content": str(obs.message)})
-                raw = heuristic_fn(history, obs, req.task)
-                action_str = parse_fn(raw).command
+                raw = generator(history, obs, req.task)
+                action_str = _parse(raw).command
                 history.append({"role": "assistant", "content": action_str})
 
             action = F1Action(command=action_str)
@@ -208,6 +268,7 @@ def simulate_episode(req: SimulateRequest) -> dict[str, Any]:
             "final_pos":   int(obs.ego_position),
             "dims":        dims,
             "policy":      policy_name,
+            "policy_note": policy_note,
         }
 
     except Exception as exc:

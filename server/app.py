@@ -196,8 +196,10 @@ def simulate_episode(req: SimulateRequest) -> dict[str, Any]:
                         "\n".join(f"{m['role']}: {m['content']}" for m in history) + "\nassistant:"
                     )
                     inp = _tok(txt, return_tensors="pt")
-                    with torch.no_grad():
-                        out = _lm.generate(**inp, max_new_tokens=64, do_sample=False)
+                    # max_new_tokens=20: F1 actions are 2-4 tokens; capping saves ~3x time
+                    with torch.inference_mode():
+                        out = _lm.generate(
+                            **inp, max_new_tokens=20, do_sample=False, use_cache=True)
                     return _tok.decode(out[0][inp["input_ids"].shape[-1]:], skip_special_tokens=True)
 
                 policy_name = "qwen3-0.6b"

@@ -138,6 +138,7 @@ def _maybe_build_llm_generator(mode: str, model: str | None):
 
 
 _LLM_GENERATOR_CACHE: dict[str, callable] = {}
+_SAMPLE_TEMP: float = 0.0  # 0.0 = greedy; >0 = do_sample with that temperature
 
 
 def _build_local_llm_generator(model: str):
@@ -181,13 +182,16 @@ def _build_local_llm_generator(model: str):
         else:
             text = "\n".join(f"{m['role']}: {m['content']}" for m in chat) + "\nassistant:"
         inputs = tokenizer(text, return_tensors="pt").to(lm.device)
+        gen_kwargs = {
+            "max_new_tokens": 64,
+            "pad_token_id": tokenizer.pad_token_id,
+        }
+        if _SAMPLE_TEMP > 0:
+            gen_kwargs.update({"do_sample": True, "temperature": _SAMPLE_TEMP, "top_p": 0.9})
+        else:
+            gen_kwargs["do_sample"] = False
         with _torch.no_grad():
-            out = lm.generate(
-                **inputs,
-                max_new_tokens=64,
-                do_sample=False,
-                pad_token_id=tokenizer.pad_token_id,
-            )
+            out = lm.generate(**inputs, **gen_kwargs)
         return tokenizer.decode(out[0][inputs["input_ids"].shape[-1] :], skip_special_tokens=True)
 
     _LLM_GENERATOR_CACHE[model] = generate
@@ -420,4 +424,10 @@ if __name__ == "__main__":
     parser.add_argument("--output-png", default="results/eval_curve.png")
     parser.add_argument("--no-memory", action="store_true")
     parser.add_argument("--use-memory", action="store_true")
-    main(parser.parse_args())
+    parser.add_argument("--sample-temp", type=float, default=0.0,
+                        help="Decoding temperature (0 = greedy, >0 = do_sample)")
+    args = parser.parse_args()
+    _SAMPLE_TEMP = args.sample_temp
+    # Re-bind into module so cached generator picks up the temp
+    import sys as _sys; _sys.modules[__name__]._SAMPLE_TEMP = args.sample_temp
+    main(args)

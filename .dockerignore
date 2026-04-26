@@ -12,7 +12,9 @@ __pycache__/
 
 sft_dataset_*.jsonl
 sft_checkpoints_*/
-grpo_*/
+grpo_smoke/
+grpo_v2/
+grpo_colab/
 training_*.log
 training_log.txt
 checkpoints/
@@ -63,8 +65,8 @@ Thumbs.db
 .env.local
 .env.example
 
-# Top-level Python that runs OUTSIDE the container (training/eval/inference)
-inference.py
+# Top-level Python that runs OUTSIDE the container (training/eval only)
+# inference.py IS needed — server/app.py imports from it for the /simulate endpoint
 train.py
 evaluate.py
 rollout.py

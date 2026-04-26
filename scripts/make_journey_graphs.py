@@ -16,55 +16,67 @@ import numpy as np
 
 RESULTS = Path("results")
 
-TASKS = ["dry_strategy_sprint", "weather_roulette", "late_safety_car", "championship_decider"]
-TASK_LABELS = ["dry sprint", "weather", "safety car", "champ decider"]
+TASKS = ["dry_strategy_sprint", "weather_roulette", "late_safety_car",
+         "championship_decider", "virtual_safety_car_window", "tyre_cliff_management"]
+TASK_LABELS = ["dry sprint", "weather", "safety car", "champ", "VSC win", "tyre cliff"]
+TASKS_4 = TASKS[:4]  # for backwards-compatible loaders
 
 
-def load_means(path: Path, mode: str = "trained") -> list[float]:
+def load_means(path: Path, mode: str = "trained", tasks: list[str] | None = None) -> list[float]:
     """Load per-task means from an eval_*.json file."""
     data = json.loads(path.read_text())
-    return [data[mode][t]["mean"] for t in TASKS]
+    tasks = tasks or TASKS_4
+    return [data[mode][t]["mean"] for t in tasks if t in data[mode]]
 
 
 # ------------------------------------------------------------
-# Data points (sourced from results/eval_*.json that we ran)
+# Data points
 # ------------------------------------------------------------
 
-# Baselines (from the most recent results/eval_summary.json — has random + untrained + expert)
-summary = json.loads((RESULTS / "eval_summary.json").read_text())
-RANDOM = [summary["random"][t]["mean"] for t in TASKS]
-UNTRAINED = [summary["untrained"][t]["mean"] for t in TASKS]
-EXPERT = [summary["expert"][t]["mean"] for t in TASKS]
+# Authoritative source: full 6-scenario eval of the GRPO v2 champion
+six = json.loads((RESULTS / "eval_six_scenarios.json").read_text())
+RANDOM = [six["random"][t]["mean"] for t in TASKS]
+UNTRAINED = [six["untrained"][t]["mean"] for t in TASKS]
+EXPERT = [six["expert"][t]["mean"] for t in TASKS]
+GRPO_V2 = [six["trained"][t]["mean"] for t in TASKS]  # CHAMPION (6-scenario)
 
-# main FINAL_RESULTS.md "trained" — these are SCRIPTED-FALLBACK numbers
-# (verified bit-exact by running scripted policy with no model)
-MAIN_REPORTED = [0.749, 0.935, 0.935, 0.535]
+# Earlier iterations were only run on 4 scenarios — pad the missing 2 with NaN
+import math
+def pad6(four: list[float]) -> list[float]:
+    return four + [math.nan, math.nan]
 
-# Shashwat's actual HF model run through real-LLM eval
-MAIN_ACTUAL = load_means(RESULTS / "eval_shashwat.json")
+# main FINAL_RESULTS.md "trained" — SCRIPTED-FALLBACK (bit-exact verified)
+MAIN_REPORTED = pad6([0.749, 0.935, 0.935, 0.535])
 
-# Our iterations
-ORIG_GRPO = [0.520, 0.560, 0.550, 0.520]  # grpo_v1 (original) at greedy
-SFT_V3 = load_means(RESULTS / "eval_sft_v3.json")
-RFT_V1_T03 = load_means(RESULTS / "eval_rft_t03.json")
-GRPO_V2 = load_means(RESULTS / "eval_grpo_v2.json")  # CHAMPION
+# Real-LLM eval of main's HF checkpoint
+MAIN_ACTUAL = pad6(load_means(RESULTS / "eval_shashwat.json"))
+
+# Our iterations (4-scenario)
+ORIG_GRPO = pad6([0.520, 0.560, 0.550, 0.520])
+SFT_V3 = pad6(load_means(RESULTS / "eval_sft_v3.json"))
+RFT_V1_T03 = pad6(load_means(RESULTS / "eval_rft_t03.json"))
 
 
 # ------------------------------------------------------------
 # 1. Journey line chart — avg score across iterations
 # ------------------------------------------------------------
 
+def _avg(scores: list[float]) -> float:
+    """Average over non-NaN values."""
+    valid = [s for s in scores if not (isinstance(s, float) and math.isnan(s))]
+    return sum(valid) / len(valid) if valid else 0.0
+
 iterations = [
     ("random", RANDOM),
     ("untrained\nQwen3-4B", UNTRAINED),
-    ("Shashwat's\nGRPO 500\n(real LLM)", MAIN_ACTUAL),
+    ("initial\nGRPO 500\n(real LLM)", MAIN_ACTUAL),
     ("Our\nSFT v3", SFT_V3),
     ("Our\nRFT v1\n(T=0.3)", RFT_V1_T03),
     ("Our\nGRPO v2\n★", GRPO_V2),
     ("Expert\n(rule-based)", EXPERT),
 ]
 labels = [name for name, _ in iterations]
-avgs = [sum(scores) / len(scores) for _, scores in iterations]
+avgs = [_avg(scores) for _, scores in iterations]
 
 fig, ax = plt.subplots(figsize=(11, 5.5))
 colors = ["#888888", "#5B7DA8", "#D67A1F", "#7BAFD4", "#9CC68F", "#C7423F", "#2A6F2A"]
@@ -100,7 +112,7 @@ print(f"Wrote {RESULTS / 'journey.png'}")
 groups = {
     "random": RANDOM,
     "untrained": UNTRAINED,
-    "Shashwat\n(real)": MAIN_ACTUAL,
+    "initial run\n(real LLM)": MAIN_ACTUAL,
     "SFT v3": SFT_V3,
     "RFT v1 T=0.3": RFT_V1_T03,
     "GRPO v2 ★": GRPO_V2,
@@ -115,12 +127,14 @@ group_colors = ["#888888", "#5B7DA8", "#D67A1F", "#7BAFD4", "#9CC68F", "#C7423F"
 
 for i, ((name, scores), color) in enumerate(zip(groups.items(), group_colors)):
     offset = (i - (n_groups - 1) / 2) * bar_w
-    bars = ax.bar(xs + offset, scores, bar_w, label=name, color=color,
+    plot_scores = [0.0 if (isinstance(s, float) and math.isnan(s)) else s for s in scores]
+    bars = ax.bar(xs + offset, plot_scores, bar_w, label=name, color=color,
                   edgecolor="black", linewidth=0.6)
     if name == "GRPO v2 ★":  # annotate champion
-        for x, s in zip(xs + offset, scores):
-            ax.text(x, s + 0.018, f"{s:.2f}", ha="center", fontsize=8, fontweight="bold",
-                    color="#C7423F")
+        for x, s in zip(xs + offset, plot_scores):
+            if s > 0:
+                ax.text(x, s + 0.018, f"{s:.2f}", ha="center", fontsize=8, fontweight="bold",
+                        color="#C7423F")
 
 ax.set_xticks(xs)
 ax.set_xticklabels(TASK_LABELS, fontsize=10)
@@ -187,5 +201,5 @@ print(f"Wrote {RESULTS / 'comparison_real.png'}")
 # ------------------------------------------------------------
 print("\n--- avg per iteration ---")
 for name, scores in iterations:
-    avg = sum(scores) / len(scores)
+    avg = _avg(scores)
     print(f"  {name.replace(chr(10), ' '):<35}  avg={avg:.3f}")

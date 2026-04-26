@@ -155,14 +155,19 @@ python evaluate.py \
   --modes random untrained trained expert
 ```
 
-Current local smoke numbers:
+Held-out eval numbers (real LLM forward pass through env, 5 seeds × 6 scenarios):
 
-| scenario | random | untrained | GRPO trained | rule-based expert |
+| scenario | random | untrained Qwen3-4B | **SFT+GRPO (grpo_v2)** | expert ceiling |
 |---|---:|---:|---:|---:|
-| dry_strategy_sprint | 0.400 | 0.509 | 0.749 | 0.840 |
-| weather_roulette | 0.344 | 0.414 | 0.935 | 0.950 |
-| late_safety_car | 0.332 | 0.525 | 0.935 | 0.935 |
-| championship_decider | 0.209 | 0.269 | 0.535 | 0.965 |
+| dry_strategy_sprint | 0.400 | 0.509 | **0.520** | 0.840 |
+| weather_roulette | 0.344 | 0.414 | **0.965** | 0.950 |
+| late_safety_car | 0.332 | 0.525 | **0.645** | 0.935 |
+| championship_decider | 0.209 | 0.269 | **0.555** | 0.965 |
+| virtual_safety_car_window | 0.329 | 0.375 | **0.471** | 0.965 |
+| tyre_cliff_management | 0.204 | 0.398 | **0.552** | 0.965 |
+| **average** | **0.303** | **0.415** | **0.618** | **0.937** |
+
+Trained model lifts average **+0.20** over untrained Qwen3-4B and closes ~33% of the random→expert gap. Biggest single win: weather scenario where the trained model (0.965) actually edges out the rule-based expert (0.950) — investigation discipline pays off. Honest weakness: dry sprint stays at 0.52 (model rarely picks `PIT_NOW` — rare-event learning gap; see [`blog.md`](blog.md) for the full journey).
 
 `train.py` has two paths:
 

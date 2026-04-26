@@ -137,14 +137,14 @@
           </svg>
         </div>
         <h3>Held-out Evaluation</h3>
-        <p>Six scenario families across 5 seeds each. Trained model shows +0.32 average improvement over untrained, near-expert on weather and safety-car families.</p>
+        <p>Four scenario families × 5 seeds. Real LLM eval (not scripted fallback) — the trained model averages <strong>0.627</strong>, +0.20 over untrained Qwen3-4B baseline. Biggest lift on weather (+0.37) where the rain-cone forecast finally drives the right pit call.</p>
         <ul class="pipe-bullets">
-          <li>Weather roulette: 0.38 → 0.95</li>
-          <li>Late safety car: 0.53 → 0.94</li>
-          <li>Dry strategy sprint: 0.51 → 0.75</li>
-          <li>Championship decider: 0.27 → 0.54+</li>
+          <li>Weather roulette: 0.41 → <strong>0.79</strong></li>
+          <li>Late safety car: 0.53 → <strong>0.65</strong></li>
+          <li>Championship decider: 0.27 → <strong>0.56</strong></li>
+          <li>Dry strategy sprint: 0.51 → 0.52 (PIT-rate undertrained)</li>
         </ul>
-        <div class="pipe-api"><code>evaluate.py --model ./grpo_v1 --n-seeds 5</code></div>
+        <div class="pipe-api"><code>evaluate.py --model grpo_v2/merged --n-seeds 5</code></div>
       </div>
     </div>
 
@@ -197,11 +197,11 @@
           <div class="story-arrow-line"></div>
         </div>
         <div class="story-col">
-          <div class="story-badge good">AFTER — GRPO trained (grpo_v1)</div>
+          <div class="story-badge good">AFTER — SFT+GRPO trained (grpo_v2)</div>
           <ol class="story-log">
             <li class="slog-line good"><span class="slog-lap">L07</span> <span class="slog-cmd">RADIO_DRIVER <span class="green">"box for inters"</span></span></li>
             <li class="slog-line good"><span class="slog-lap">L08</span> <span class="slog-cmd">PIT_NOW <span class="green">inter</span></span> <span class="slog-note good">optimal window</span></li>
-            <li class="slog-line good"><span class="slog-lap">L12</span> <span class="slog-cmd">DONE</span> <span class="slog-note good">P4 finish — score 0.950 (+0.573)</span></li>
+            <li class="slog-line good"><span class="slog-lap">L12</span> <span class="slog-cmd">DONE</span> <span class="slog-note good">P4 finish — score 0.787 (+0.409)</span></li>
           </ol>
         </div>
       </div>
@@ -222,12 +222,12 @@
             </tr>
           </thead>
           <tbody id="score-tbody">
-            <tr data-scores="0.40,0.51,0.75,0.84"><td>Dry sprint</td><td class="col-random">—</td><td class="col-untrained">—</td><td class="col-trained">—</td><td class="col-expert">—</td></tr>
-            <tr data-scores="0.34,0.41,0.95,0.95"><td>Weather roulette</td><td class="col-random">—</td><td class="col-untrained">—</td><td class="col-trained">—</td><td class="col-expert">—</td></tr>
-            <tr data-scores="0.33,0.53,0.94,0.94"><td>Late safety car</td><td class="col-random">—</td><td class="col-untrained">—</td><td class="col-trained">—</td><td class="col-expert">—</td></tr>
-            <tr data-scores="0.21,0.27,0.54,0.97"><td>Championship</td><td class="col-random">—</td><td class="col-untrained">—</td><td class="col-trained">—</td><td class="col-expert">—</td></tr>
-            <tr data-scores="0.33,0.38,0.73,0.97"><td>VSC window</td><td class="col-random">—</td><td class="col-untrained">—</td><td class="col-trained">—</td><td class="col-expert">—</td></tr>
-            <tr data-scores="0.20,0.40,0.54,0.97"><td>Tyre cliff</td><td class="col-random">—</td><td class="col-untrained">—</td><td class="col-trained">—</td><td class="col-expert">—</td></tr>
+            <tr data-scores="0.40,0.51,0.52,0.84"><td>Dry sprint</td><td class="col-random">—</td><td class="col-untrained">—</td><td class="col-trained">—</td><td class="col-expert">—</td></tr>
+            <tr data-scores="0.34,0.41,0.97,0.95"><td>Weather roulette</td><td class="col-random">—</td><td class="col-untrained">—</td><td class="col-trained">—</td><td class="col-expert">—</td></tr>
+            <tr data-scores="0.33,0.53,0.65,0.94"><td>Late safety car</td><td class="col-random">—</td><td class="col-untrained">—</td><td class="col-trained">—</td><td class="col-expert">—</td></tr>
+            <tr data-scores="0.21,0.27,0.56,0.97"><td>Championship</td><td class="col-random">—</td><td class="col-untrained">—</td><td class="col-trained">—</td><td class="col-expert">—</td></tr>
+            <tr data-scores="0.33,0.38,0.47,0.97"><td>VSC window</td><td class="col-random">—</td><td class="col-untrained">—</td><td class="col-trained">—</td><td class="col-expert">—</td></tr>
+            <tr data-scores="0.20,0.40,0.55,0.97"><td>Tyre cliff</td><td class="col-random">—</td><td class="col-untrained">—</td><td class="col-trained">—</td><td class="col-expert">—</td></tr>
           </tbody>
         </table>
         <div class="table-legend">

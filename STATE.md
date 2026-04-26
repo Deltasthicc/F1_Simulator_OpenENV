@@ -23,18 +23,20 @@ Updated after each phase gate. If anything kills the session, read this top-to-b
 - [x] Phase 7 — Landing page LIVE at https://f1.chinnaboina.com/
 - [x] Phase 8 — HF Space LIVE (Deltasthic/f1-strategist serves landing page)
 - [x] Phase 9 — Eval against trained checkpoint (LoRA merged → `grpo_v1/merged-500/`, results at `results/eval_summary.json` + `results/eval_curve.png`)
-- [ ] Phase 10 — Demo polish: re-render before/after GIFs with real trained checkpoint, update blog with real numbers, record video, publish blog + YouTube
-- [ ] Phase 11 — HF Hub model push (`Deltasthic/f1-strategist-qwen3-4b-grpo`), pre-push checklist, tag `v1.0-finale`, submit official form
-- [~] Phase 12 — Historical replay loader stubbed; can run after Phase 9 if time
+- [x] Phase 10 — Iter 0–4: SFT v3 + GRPO v2 — **0.627 avg** champion (was 0.538). 5 bugs caught + fixed.
+- [x] Phase 11a — Merged `origin/main` into `dev`, integrating UI/Space + keeping our model + bug-fixed eval
+- [ ] Phase 11b — HF Hub model push: replace `Deltasthic/f1-strategist-qwen3-4b-grpo` with `grpo_v2/` adapter
+- [ ] Phase 11c — Final commit + push to GitHub, submit hackathon form
 
-## Resume markers when ready
-**NEXT BLOCKER:** `git-lfs` not installed. The `grpo_v1/*.safetensors` files are 134-byte LFS pointers, not real weights. To unblock:
-```
-sudo apt install git-lfs       # one sudo prompt
-git lfs install                # configures filters
-git lfs pull                   # downloads actual weights from origin
-```
-After that, `grpo_v1/checkpoint-500/adapter_model.safetensors` will be the real model and we can run `evaluate.py --model grpo_v1/checkpoint-500`.
+## Champion model
+**`grpo_v2/`** — SFT v3 (enriched obs, thinking-off render) → GRPO v2 (200 steps, no Unsloth, no vLLM, beta=0.005, num_generations=8). Avg eval **0.627** vs untrained 0.429 (+0.20). See `results/journey.png`, `results/scenario_breakdown.png`, `results/comparison_real.png`.
+
+## Five bugs caught and fixed (the journey)
+1. **Silent scripted-fallback bug** in main's `evaluate.py` → reported 0.79 was actually a hand-coded rule policy, never the model. Verified bit-exact match by running scripted policy in isolation.
+2. **Qwen3 thinking-mode trap** — default reasoning-on with `max_new_tokens=64` → unparseable rambles → `parse_action()` fell through to STAY_OUT every step.
+3. **Train/eval format mismatch** — flipping `enable_thinking=False` only at eval broke the chat-template prefix the model never saw.
+4. **`format_obs` stripped scenario disambiguation** — model couldn't tell `late_safety_car` from `dry_strategy_sprint` at lap 0. Restored `obs.message` + `obs.hint`.
+5. **Cold GRPO collapse** — vanilla GRPO from base Qwen3 plateaued at 0.54 (frac_reward_zero_std → 1.0). Fixed by SFT warm-start before GRPO (per `TRAINING.md`'s prescribed but skipped recipe).
 
 ## Phase log
 

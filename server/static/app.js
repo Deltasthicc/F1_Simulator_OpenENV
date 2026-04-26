@@ -45,7 +45,7 @@ const DECISIONS = [
   { lap: "L07", cmd: "PIT_NOW inter",                   key: true  },
   { lap: "L08", cmd: "SET_MODE push",                   key: false },
   { lap: "L11", cmd: "DEFEND_POSITION",                 key: false },
-  { lap: "L12", cmd: "DONE — score 0.95",               key: true  },
+  { lap: "L12", cmd: "DONE — score 0.79",               key: true  },
 ];
 
 const TITLE_TEXT = "AN LLM RACE STRATEGIST";

@@ -2,7 +2,7 @@
 F1 Strategist — FastAPI Server
 ================================
 
-Uses openenv's `create_app` helper which handles the ENABLE_WEB_INTERFACE env
+Uses openenv's `create_fastapi_app` helper which handles the ENABLE_WEB_INTERFACE env
 var natively:
   - ENABLE_WEB_INTERFACE=0 (default): plain FastAPI with /reset /step /health /schema
   - ENABLE_WEB_INTERFACE=1 (Dockerfile default): adds the openenv built-in Gradio
@@ -22,7 +22,7 @@ from typing import Any
 from fastapi import FastAPI
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
-from openenv.core.env_server import create_app
+from openenv.core.env_server import create_fastapi_app
 from pydantic import BaseModel
 
 from models import F1Action, F1Observation
@@ -44,19 +44,19 @@ def _env_factory() -> F1StrategistEnvironment:
 # ---------------------------------------------------------------------------
 # Build the FastAPI application
 # ---------------------------------------------------------------------------
-# create_app checks ENABLE_WEB_INTERFACE and mounts the Gradio panel at /web
+# create_fastapi_app checks ENABLE_WEB_INTERFACE and mounts the Gradio panel at /web
 # when it is set to "1" or "true".  We also layer our custom F1 demo panel on
 # top of that when Gradio is available.
 
-app = create_app(
+app = create_fastapi_app(
     _env_factory,
     F1Action,
     F1Observation,
-    env_name="F1 Strategist",
 )
+app.title = "F1 Strategist"
 
 # Mount static assets and the line-drawing landing page at GET /
-# openenv's create_app may register a "/" redirect to /web — strip it first
+# openenv's create_fastapi_app may register a "/" redirect to /web — strip it first
 # so our landing page is what visitors see at the root URL. /web (Gradio
 # panel) and /reset /step /health are unaffected.
 if _STATIC_DIR.exists():

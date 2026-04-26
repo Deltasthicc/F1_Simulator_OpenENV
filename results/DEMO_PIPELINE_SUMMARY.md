@@ -1,6 +1,6 @@
 # Demo pipeline summary
 
-Total wall-clock: 196.7s
+Total wall-clock: 177.6s
 
 ## Held-out evaluation
 
@@ -15,14 +15,14 @@ Total wall-clock: 196.7s
 
 | step | status | time |
 |---|---|---:|
-| [1/5] held-out evaluation | ok | 3.5s |
-| [2/5] training curve | ok | 1.9s |
-| [3/5] track grid + per-track GIFs | ok | 71.9s |
-| [3b/5] race story chart | ok | 3.3s |
-| [4/5] before/after — dry_strategy_sprint | ok | 25.6s |
-| [4/5] before/after — weather_roulette | ok | 28.3s |
-| [4/5] before/after — late_safety_car | ok | 28.3s |
-| [4/5] before/after — championship_decider | ok | 33.8s |
+| [1/5] held-out evaluation | ok | 10.6s |
+| [2/5] training curve | ok | 3.1s |
+| [3/5] track grid + per-track GIFs | ok | 79.0s |
+| [3b/5] race story chart | ok | 5.3s |
+| [4/5] before/after — dry_strategy_sprint | ok | 14.7s |
+| [4/5] before/after — weather_roulette | ok | 17.4s |
+| [4/5] before/after — late_safety_car | ok | 18.3s |
+| [4/5] before/after — championship_decider | ok | 29.3s |
 
 ## Artifacts produced
 

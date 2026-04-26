@@ -111,40 +111,48 @@ def simulate_episode(req: SimulateRequest) -> dict[str, Any]:
         llm_gen = None  # if None, we use the rule-based heuristic
 
         if policy_name in ("grpo_v1", "grpo"):
-            checkpoint = _Path(__file__).parent.parent / "grpo_v1"
+            # Prefer /app/grpo_v1 (Docker absolute path), then relative to this file
+            checkpoint = _Path("/app/grpo_v1")
+            if not checkpoint.exists():
+                checkpoint = _Path(__file__).parent.parent / "grpo_v1"
             if checkpoint.exists():
                 try:
                     import torch
                     from transformers import AutoModelForCausalLM, AutoTokenizer
                     from peft import PeftModel
-                    _tok = AutoTokenizer.from_pretrained(str(checkpoint), trust_remote_code=True)
-                    _dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
-                    # Load base then merge LoRA
-                    base_id = "unsloth/Qwen3-4B"
+                    _tok = AutoTokenizer.from_pretrained(
+                        str(checkpoint), trust_remote_code=True)
+                    # float16 halves memory vs float32; no CUDA needed
                     _base = AutoModelForCausalLM.from_pretrained(
-                        base_id, torch_dtype=_dtype, device_map="auto", trust_remote_code=True,
+                        "unsloth/Qwen3-4B",
+                        torch_dtype=torch.float16,
+                        low_cpu_mem_usage=True,
+                        trust_remote_code=True,
                     )
                     _lm = PeftModel.from_pretrained(_base, str(checkpoint))
                     _lm.eval()
 
                     def llm_gen(history: list[dict]) -> str:
-                        if hasattr(_tok, "apply_chat_template"):
-                            txt = _tok.apply_chat_template(
-                                history, tokenize=False, add_generation_prompt=True)
-                        else:
-                            txt = "\n".join(f"{m['role']}: {m['content']}" for m in history) + "\nassistant:"
-                        inp = _tok(txt, return_tensors="pt").to(_lm.device)
+                        txt = _tok.apply_chat_template(
+                            history, tokenize=False, add_generation_prompt=True
+                        ) if hasattr(_tok, "apply_chat_template") else (
+                            "\n".join(f"{m['role']}: {m['content']}" for m in history) + "\nassistant:"
+                        )
+                        inp = _tok(txt, return_tensors="pt")
                         with torch.no_grad():
                             out = _lm.generate(**inp, max_new_tokens=64, do_sample=False)
                         return _tok.decode(out[0][inp["input_ids"].shape[-1]:], skip_special_tokens=True)
 
                     policy_name = "grpo_v1"
-                    policy_note = "Running GRPO-trained Qwen3-4B + LoRA checkpoint."
+                    policy_note = "Loaded grpo_v1 (Qwen3-4B + LoRA). Running CPU inference."
+                except MemoryError:
+                    policy_note = "grpo_v1: not enough RAM to load Qwen3-4B (needs ~8 GB). Fell back to heuristic."
+                    policy_name = "grpo_v1 → heuristic fallback"
                 except Exception as _e:
-                    policy_note = f"grpo_v1 checkpoint found but could not load ({type(_e).__name__}: {_e}). Fell back to heuristic."
+                    policy_note = f"grpo_v1 load failed ({type(_e).__name__}: {str(_e)[:120]}). Fell back to heuristic."
                     policy_name = "grpo_v1 → heuristic fallback"
             else:
-                policy_note = "grpo_v1 checkpoint not present on this server. Fell back to heuristic."
+                policy_note = "grpo_v1 adapter not found on this server. Fell back to heuristic."
                 policy_name = "grpo_v1 → heuristic fallback"
 
         elif policy_name in ("qwen3", "qwen3-0.6b", "llm"):
@@ -153,27 +161,29 @@ def simulate_episode(req: SimulateRequest) -> dict[str, Any]:
                 from transformers import AutoModelForCausalLM, AutoTokenizer
                 _model_id = "Qwen/Qwen3-0.6B"
                 _tok = AutoTokenizer.from_pretrained(_model_id, trust_remote_code=True)
-                _dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
                 _lm  = AutoModelForCausalLM.from_pretrained(
-                    _model_id, torch_dtype=_dtype, device_map="auto", trust_remote_code=True,
+                    _model_id,
+                    torch_dtype=torch.float16,
+                    low_cpu_mem_usage=True,
+                    trust_remote_code=True,
                 )
                 _lm.eval()
 
                 def llm_gen(history: list[dict]) -> str:
-                    if hasattr(_tok, "apply_chat_template"):
-                        txt = _tok.apply_chat_template(
-                            history, tokenize=False, add_generation_prompt=True)
-                    else:
-                        txt = "\n".join(f"{m['role']}: {m['content']}" for m in history) + "\nassistant:"
-                    inp = _tok(txt, return_tensors="pt").to(_lm.device)
+                    txt = _tok.apply_chat_template(
+                        history, tokenize=False, add_generation_prompt=True
+                    ) if hasattr(_tok, "apply_chat_template") else (
+                        "\n".join(f"{m['role']}: {m['content']}" for m in history) + "\nassistant:"
+                    )
+                    inp = _tok(txt, return_tensors="pt")
                     with torch.no_grad():
                         out = _lm.generate(**inp, max_new_tokens=64, do_sample=False)
                     return _tok.decode(out[0][inp["input_ids"].shape[-1]:], skip_special_tokens=True)
 
                 policy_name = "qwen3-0.6b"
-                policy_note = "Running Qwen3-0.6B (no RL training)."
+                policy_note = "Loaded Qwen3-0.6B from HuggingFace Hub. Running CPU inference."
             except Exception as _e:
-                policy_note = f"Could not load Qwen3-0.6B ({type(_e).__name__}: {_e}). Fell back to heuristic."
+                policy_note = f"Qwen3-0.6B failed ({type(_e).__name__}: {str(_e)[:120]}). Fell back to heuristic."
                 policy_name = "qwen3 → heuristic fallback"
 
         # ── Episode loop ─────────────────────────────────────────────────

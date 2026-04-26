@@ -96,6 +96,16 @@ train.py.bak*
 train.py.before_*
 train.py.broken_*
 
-# Keep final trained GRPO model
+# Keep final trained GRPO model (LoRA adapters only — full merged shards exceed GitHub's 2GB LFS limit)
 !grpo_v1/
 !grpo_v1/**
+grpo_v1/merged-*/
+grpo_v1/merged-*/**
+
+# SFT training artifacts (regeneratable; full merged checkpoints are huge)
+sft_checkpoints_v1/merged/
+sft_checkpoints_v1/merged/**
+
+# Local RFT artifacts
+rft_dataset*.jsonl
+rft_checkpoints*/

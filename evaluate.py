@@ -169,17 +169,23 @@ def _build_local_llm_generator(model: str):
         chat.extend(history[-6:])  # cap context
         chat.append({"role": "user", "content": format_obs(obs)})
         if hasattr(tokenizer, "apply_chat_template"):
-            text = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
+            try:
+                text = tokenizer.apply_chat_template(
+                    chat, tokenize=False, add_generation_prompt=True,
+                    enable_thinking=False,  # Qwen3 default has thinking ON; we want bare commands
+                )
+            except TypeError:
+                text = tokenizer.apply_chat_template(
+                    chat, tokenize=False, add_generation_prompt=True,
+                )
         else:
             text = "\n".join(f"{m['role']}: {m['content']}" for m in chat) + "\nassistant:"
         inputs = tokenizer(text, return_tensors="pt").to(lm.device)
         with _torch.no_grad():
             out = lm.generate(
                 **inputs,
-                max_new_tokens=256,
-                do_sample=True,
-                temperature=0.7,
-                top_p=0.9,
+                max_new_tokens=64,
+                do_sample=False,
                 pad_token_id=tokenizer.pad_token_id,
             )
         return tokenizer.decode(out[0][inputs["input_ids"].shape[-1] :], skip_special_tokens=True)

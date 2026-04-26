@@ -111,10 +111,19 @@ def main() -> None:
     # Pre-render messages → text using the chat template, so SFTTrainer's
     # text-field path is unambiguous (Unsloth's formatting_func interface is
     # restrictive about return shapes).
+    # IMPORTANT: enable_thinking=False so train and eval format match. Qwen3's
+    # default thinking-on inserts `<think>` markers the bare-command data
+    # doesn't have — leads to a runaway rambling model at eval time.
     def _render(example):
-        return {"text": tokenizer.apply_chat_template(
-            example["messages"], tokenize=False, add_generation_prompt=False
-        )}
+        try:
+            return {"text": tokenizer.apply_chat_template(
+                example["messages"], tokenize=False,
+                add_generation_prompt=False, enable_thinking=False,
+            )}
+        except TypeError:
+            return {"text": tokenizer.apply_chat_template(
+                example["messages"], tokenize=False, add_generation_prompt=False,
+            )}
 
     ds = ds.map(_render, remove_columns=[c for c in ds.column_names if c != "text"])
     print(f"[sft] Rendered to text-field. Sample (first 200 chars):")

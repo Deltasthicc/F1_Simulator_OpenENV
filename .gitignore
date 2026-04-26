@@ -109,3 +109,9 @@ sft_checkpoints_v1/merged/**
 # Local RFT artifacts
 rft_dataset*.jsonl
 rft_checkpoints*/
+
+# main's extra grpo_v1 checkpoints (we ship grpo_v2 instead)
+grpo_v1/checkpoint-5*/
+grpo_v1/checkpoint-6*/
+grpo_v1/checkpoint-7*/
+grpo_v1/checkpoint-8*/

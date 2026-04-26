@@ -5,16 +5,20 @@ colorFrom: red
 colorTo: yellow
 sdk: docker
 app_port: 8000
-pinned: false
+pinned: true
 license: mit
-short_description: An OpenEnv environment for training LLM race strategists
+short_description: LLM race strategist trained with GRPO on F1 strategy
 tags:
   - openenv
   - reinforcement-learning
+  - grpo
   - long-horizon
   - world-model
   - formula-one
   - strategy
+  - qwen3
+models:
+  - Deltasthic/f1-strategist-qwen3-4b-grpo
 ---
 
 <!-- The YAML block above is HuggingFace Spaces metadata. Do not move it. -->
@@ -24,9 +28,31 @@ tags:
 **OpenEnv environment for training LLM agents as Formula 1 race strategists.**
 
 > **Try it live:**
-> [`f1.chinnaboina.com`](https://f1.chinnaboina.com/) — landing page + interactive panel
-> · [`Hugging Face Space`](https://huggingface.co/spaces/Deltasthic/f1-strategist) — same env on HF infra
-> · [`GitHub`](https://github.com/Deltasthicc/F1_Simulator_OpenENV) — source
+> [`HF Space`](https://huggingface.co/spaces/Deltasthic/f1-strategist) — landing page + interactive Gradio panel
+> · [`f1.chinnaboina.com`](https://f1.chinnaboina.com/) — live deployment
+> · [`GitHub`](https://github.com/Deltasthicc/F1_Simulator_OpenENV) — full source
+
+## Judge quick-links
+
+| Resource | Link |
+|---|---|
+| HF Space (live environment) | [Deltasthic/f1-strategist](https://huggingface.co/spaces/Deltasthic/f1-strategist) |
+| Interactive Gradio playground | [/web](https://huggingface.co/spaces/Deltasthic/f1-strategist) → click **Interactive** |
+| Blog post (writeup) | [blog.md](https://huggingface.co/spaces/Deltasthic/f1-strategist/blob/main/blog.md) |
+| Training notebook (Colab) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Deltasthicc/F1_Simulator_OpenENV/blob/main/notebooks/f1_strategist_training_colab.ipynb) |
+| Demo video | [YouTube — link in demo-assets/youtube-link.txt](demo-assets/youtube-link.txt) |
+| Model weights (LoRA) | [Deltasthic/f1-strategist-qwen3-4b-grpo](https://huggingface.co/Deltasthic) |
+| GitHub | [Deltasthicc/F1\_Simulator\_OpenENV](https://github.com/Deltasthicc/F1_Simulator_OpenENV) |
+
+## Training evidence
+
+Real run results — RTX 5090, 800 steps, Qwen3-4B LoRA.
+
+![Eval curve — before vs after GRPO across 6 scenario families](https://raw.githubusercontent.com/Deltasthicc/F1_Simulator_OpenENV/main/results/eval_curve.png)
+
+![GRPO training reward curve — 800 steps, peak 0.907 @ step 480](https://raw.githubusercontent.com/Deltasthicc/F1_Simulator_OpenENV/main/results/training_loss_curve.png)
+
+![Race story — Weather Roulette Spa, untrained vs trained, position / tyre / score breakdown](https://raw.githubusercontent.com/Deltasthicc/F1_Simulator_OpenENV/main/results/race_story.png)
 
 It is lap 8 of 12 at Spa. Light rain has started. Verstappen ahead of you just stayed out on slicks. Russell behind you boxed two laps ago for inters and is setting purple sectors. Your tyres have 4 laps of grip left. Your pit window closes in 3. The board on the pit wall is asking what to call. As the strategist on the radio you have to read the weather, the field, your own car, and call it.
 
@@ -131,12 +157,12 @@ python evaluate.py \
 
 Current local smoke numbers:
 
-| scenario | random | untrained | scripted trained-smoke | rule-based expert |
+| scenario | random | untrained | GRPO trained | rule-based expert |
 |---|---:|---:|---:|---:|
-| dry_strategy_sprint | 0.363 | 0.506 | 0.965 | 0.968 |
-| weather_roulette | 0.325 | 0.378 | 0.950 | 0.950 |
-| late_safety_car | 0.313 | 0.420 | 0.935 | 0.935 |
-| championship_decider | 0.423 | 0.305 | 0.865 | 0.965 |
+| dry_strategy_sprint | 0.400 | 0.509 | 0.749 | 0.840 |
+| weather_roulette | 0.344 | 0.414 | 0.935 | 0.950 |
+| late_safety_car | 0.332 | 0.525 | 0.935 | 0.935 |
+| championship_decider | 0.209 | 0.269 | 0.535 | 0.965 |
 
 `train.py` has two paths:
 

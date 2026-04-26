@@ -21,5 +21,11 @@
     "rstrip": false,
     "single_word": false
   },
-  "pad_token": "<|PAD_TOKEN|>"
+  "pad_token": {
+    "content": "<|PAD_TOKEN|>",
+    "lstrip": false,
+    "normalized": false,
+    "rstrip": false,
+    "single_word": false
+  }
 }

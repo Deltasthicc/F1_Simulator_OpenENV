@@ -1,0 +1,25 @@
+WEATHER_ROULETTE seed=7 — GRPO-trained Qwen3-4B vs untrained baseline
+
+UNTRAINED (score 0.378):
+  lap 00: SET_MODE push
+  lap 01: STAY_OUT
+  lap 02: SET_MODE race
+  lap 03: SET_MODE conserve
+  lap 04: STAY_OUT
+  lap 05: STAY_OUT
+  lap 06: SET_MODE conserve
+  lap 07: STAY_OUT          <- rain peak passes, still on slicks
+  lap 08: STAY_OUT
+  lap 09: PIT_NOW soft       <- wrong compound, too late
+  lap 10: SET_MODE race
+  lap 11: SET_MODE conserve
+
+TRAINED (score 0.950, +0.572 delta):
+  lap 00: REQUEST_FORECAST            <- investigates weather first
+  lap 01: INSPECT_TYRE_DEGRADATION    <- investigates tyres
+  lap 02-05: STAY_OUT                 <- holds position
+  lap 06: RADIO_DRIVER "Box now for inters."   <- comms call
+  lap 07: PIT_NOW inter               <- correct compound, one lap before peak
+  lap 08-09: STAY_OUT
+  lap 10: INSPECT_FUEL_MARGIN
+  lap 11: STAY_OUT

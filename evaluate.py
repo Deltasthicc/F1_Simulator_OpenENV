@@ -368,23 +368,151 @@ def _untrained_policy(obs, rng: random.Random, family: str) -> str:
 
 
 def _plot(results: dict, tasks: list[str], modes: list[str], output: Path) -> None:
+    """Annotated bar chart: per-mode bars + value labels + Δ-from-untrained arrow.
+
+    Dark-theme, F1-paddock palette. Judges can see at a glance:
+      - Each grouped cluster = one scenario family
+      - Green bars (trained) sit above orange bars (untrained)
+      - Red Δ arrows show the absolute improvement from training
+    """
     output.parent.mkdir(parents=True, exist_ok=True)
-    x = list(range(len(tasks)))
-    width = 0.8 / max(1, len(modes))
-    fig, ax = plt.subplots(figsize=(10, 5))
+
+    BG       = "#0f0f0f"
+    WHITE    = "#ffffff"
+    SUBTEXT  = "#aaaaaa"
+    GRID_C   = "#2a2a2a"
+
+    palette = {
+        "random":    "#9aa0a6",
+        "untrained": "#ef8a17",
+        "trained":   "#00d2be",
+        "expert":    "#e10600",
+        "panic":     "#6c2dc7",
+    }
+    nice_names = {
+        "dry_strategy_sprint":      "Dry sprint",
+        "weather_roulette":         "Weather roulette",
+        "late_safety_car":          "Late safety car",
+        "championship_decider":     "Championship decider",
+        "virtual_safety_car_window":"VSC window",
+        "tyre_cliff_management":    "Tyre cliff",
+    }
+
+    n_tasks = len(tasks)
+    n_modes = len(modes)
+    width   = 0.72 / max(1, n_modes)
+    x       = list(range(n_tasks))
+
+    fig, ax = plt.subplots(figsize=(max(12, n_tasks * 2.8), 6.8), dpi=160)
+    fig.patch.set_facecolor(BG)
+    ax.set_facecolor(BG)
+    for spine in ax.spines.values():
+        spine.set_edgecolor("#333333")
+
     for i, mode in enumerate(modes):
-        means = [results[mode][task]["mean"] for task in tasks]
-        stds = [results[mode][task]["std"] for task in tasks]
-        offsets = [v - 0.4 + width / 2 + i * width for v in x]
-        ax.bar(offsets, means, width=width, yerr=stds, capsize=3, label=mode)
+        means   = [results[mode][t]["mean"] for t in tasks]
+        stds    = [results[mode][t].get("std", 0.0) for t in tasks]
+        offsets = [v - 0.36 + width / 2 + i * width for v in x]
+        color   = palette.get(mode, "#888888")
+        ax.bar(
+            offsets, means, width=width,
+            yerr=stds, capsize=3, error_kw={"ecolor": "#555", "elinewidth": 1.0},
+            color=color, edgecolor=BG, linewidth=1.0,
+            label=mode.replace("_", " "),
+            zorder=3, alpha=0.92,
+        )
+        for off, m in zip(offsets, means):
+            ax.text(
+                off, m + 0.015, f"{m:.2f}",
+                ha="center", va="bottom",
+                fontsize=8.0, fontweight="bold",
+                color=color, zorder=4,
+            )
+
+    # Δ arrow: untrained → trained
+    if "untrained" in modes and "trained" in modes:
+        ut_idx = modes.index("untrained")
+        tr_idx = modes.index("trained")
+        for task_idx, task in enumerate(tasks):
+            ut_mean = results["untrained"][task]["mean"]
+            tr_mean = results["trained"][task]["mean"]
+            delta   = tr_mean - ut_mean
+            if abs(delta) < 0.02:
+                continue
+            # Arrow x: between untrained and trained bar centres
+            ut_off = task_idx - 0.36 + width / 2 + ut_idx * width
+            tr_off = task_idx - 0.36 + width / 2 + tr_idx * width
+            xpos   = (ut_off + tr_off) / 2 + 0.22
+            arrow_color = "#1aff6e" if delta > 0 else "#ff4444"
+            ax.annotate(
+                "",
+                xy=(xpos, tr_mean), xytext=(xpos, ut_mean),
+                arrowprops=dict(arrowstyle="->", color=arrow_color,
+                                lw=2.2, shrinkA=2, shrinkB=2),
+                zorder=5,
+            )
+            ax.text(
+                xpos + 0.05, (ut_mean + tr_mean) / 2,
+                f"+{delta:.2f}" if delta >= 0 else f"{delta:.2f}",
+                fontsize=9, fontweight="bold",
+                color=arrow_color, va="center", ha="left", zorder=5,
+            )
+
     ax.set_xticks(x)
-    ax.set_xticklabels(tasks, rotation=20, ha="right")
-    ax.set_ylim(0, 1.0)
-    ax.set_ylabel("Weighted final score")
-    ax.set_title("F1 Strategist evaluation")
-    ax.legend()
+    ax.set_xticklabels(
+        [nice_names.get(t, t) for t in tasks],
+        rotation=0, ha="center", fontsize=11, color=WHITE,
+    )
+    ax.set_ylim(0, 1.22)
+    ax.set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+    ax.yaxis.set_tick_params(labelcolor=WHITE)
+    ax.set_ylabel("Weighted final score  (0 – 1)",
+                  fontsize=11, fontweight="bold", color=WHITE)
+    ax.set_title("F1 Strategist — held-out evaluation",
+                 fontsize=15, fontweight="bold", color=WHITE, pad=14)
+    ax.grid(axis="y", alpha=0.25, color=GRID_C, linestyle="--", zorder=1)
+    ax.set_axisbelow(True)
+
+    ax.axhline(0.5, color="#555", linewidth=0.9, linestyle="--",
+               alpha=0.6, zorder=2)
+    ax.text(n_tasks - 0.5, 0.505, "0.50 baseline",
+            fontsize=8.5, color="#888", va="bottom", ha="right")
+
+    legend = ax.legend(
+        loc="upper left", ncol=len(modes), fontsize=10,
+        facecolor="#1a1a1a", labelcolor=WHITE,
+        edgecolor="#444", framealpha=0.95,
+    )
+
+    # Summary annotation: overall Δ untrained → trained
+    if "untrained" in modes and "trained" in modes:
+        deltas = [
+            results["trained"][t]["mean"] - results["untrained"][t]["mean"]
+            for t in tasks
+        ]
+        avg_delta = sum(deltas) / len(deltas)
+        ax.text(
+            0.98, 0.97,
+            f"Avg improvement (untrained → trained): +{avg_delta:.2f}",
+            transform=ax.transAxes,
+            fontsize=9.5, fontweight="bold", color="#00d2be",
+            va="top", ha="right",
+            bbox=dict(boxstyle="round,pad=0.4",
+                      facecolor="#1a1a1a", edgecolor="#00d2be",
+                      linewidth=1.2, alpha=0.95),
+            zorder=10,
+        )
+
+    ax.text(
+        0.5, -0.12,
+        "Higher is better. Reward combines race result, strategic decisions, "
+        "tyre/fuel management, comms quality, and operational efficiency.",
+        transform=ax.transAxes, fontsize=8.5, color=SUBTEXT,
+        ha="center", va="top", style="italic",
+    )
+
     fig.tight_layout()
-    fig.savefig(output, dpi=160)
+    fig.savefig(output, dpi=160, bbox_inches="tight", facecolor=BG)
     plt.close(fig)
 
 

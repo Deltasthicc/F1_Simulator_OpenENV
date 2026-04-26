@@ -83,6 +83,15 @@ FUEL_BURN_PER_LAP: dict[str, float] = {
 }
 _DEFAULT_FUEL_BURN = 1.75
 
+# In server/physics.py
+EGO_CONSTRUCTORS = {
+    "Red Bull":    {"pace_delta_s": -1.5, "degradation_factor": 0.92},  # fastest, easiest on tyres
+    "Ferrari":     {"pace_delta_s": -0.8, "degradation_factor": 0.96},
+    "Mercedes":    {"pace_delta_s": -0.5, "degradation_factor": 0.95},
+    "McLaren":     {"pace_delta_s":  0.0, "degradation_factor": 1.00},  # reference (default)
+    "Aston Martin":{"pace_delta_s": +0.5, "degradation_factor": 1.03},
+    "Williams":    {"pace_delta_s": +2.5, "degradation_factor": 1.08},  # hardest mode
+}
 
 @lru_cache(maxsize=1)
 def _load_tyre_baseline() -> dict:

@@ -137,8 +137,13 @@ def _maybe_build_llm_generator(mode: str, model: str | None):
     return None
 
 
+_LLM_GENERATOR_CACHE: dict[str, callable] = {}
+
+
 def _build_local_llm_generator(model: str):
-    """Load a transformers model on demand and return an obs→text callable."""
+    """Load a transformers model once per process and return an obs→text callable."""
+    if model in _LLM_GENERATOR_CACHE:
+        return _LLM_GENERATOR_CACHE[model]
     try:
         import torch  # noqa: F401
         from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -151,10 +156,13 @@ def _build_local_llm_generator(model: str):
 
     import torch as _torch
     tokenizer = AutoTokenizer.from_pretrained(model, trust_remote_code=True)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
     dtype = _torch.bfloat16 if _torch.cuda.is_available() else _torch.float32
     lm = AutoModelForCausalLM.from_pretrained(
         model, torch_dtype=dtype, device_map="auto", trust_remote_code=True
     )
+    lm.eval()
 
     def generate(obs, history):
         chat = [{"role": "system", "content": SYSTEM_PROMPT}]
@@ -166,9 +174,17 @@ def _build_local_llm_generator(model: str):
             text = "\n".join(f"{m['role']}: {m['content']}" for m in chat) + "\nassistant:"
         inputs = tokenizer(text, return_tensors="pt").to(lm.device)
         with _torch.no_grad():
-            out = lm.generate(**inputs, max_new_tokens=64, do_sample=False)
+            out = lm.generate(
+                **inputs,
+                max_new_tokens=256,
+                do_sample=True,
+                temperature=0.7,
+                top_p=0.9,
+                pad_token_id=tokenizer.pad_token_id,
+            )
         return tokenizer.decode(out[0][inputs["input_ids"].shape[-1] :], skip_special_tokens=True)
 
+    _LLM_GENERATOR_CACHE[model] = generate
     return generate
 
 

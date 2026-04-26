@@ -22,7 +22,7 @@ Updated after each phase gate. If anything kills the session, read this top-to-b
 - [x] Phase 6 — Full GRPO 500 steps Qwen3-4B (Shashwat — committed via main, merged into dev as `d763d0b`)
 - [x] Phase 7 — Landing page LIVE at https://f1.chinnaboina.com/
 - [x] Phase 8 — HF Space LIVE (Deltasthic/f1-strategist serves landing page)
-- [ ] Phase 9 — Eval against trained checkpoint **— NEXT**, but BLOCKED on `git lfs pull` (need git-lfs install for actual safetensors weights)
+- [x] Phase 9 — Eval against trained checkpoint (LoRA merged → `grpo_v1/merged-500/`, results at `results/eval_summary.json` + `results/eval_curve.png`)
 - [ ] Phase 10 — Demo polish: re-render before/after GIFs with real trained checkpoint, update blog with real numbers, record video, publish blog + YouTube
 - [ ] Phase 11 — HF Hub model push (`Deltasthic/f1-strategist-qwen3-4b-grpo`), pre-push checklist, tag `v1.0-finale`, submit official form
 - [~] Phase 12 — Historical replay loader stubbed; can run after Phase 9 if time
@@ -72,7 +72,20 @@ After that, `grpo_v1/checkpoint-500/adapter_model.safetensors` will be the real 
 - HF_TOKEN: real value confirmed in .env, `whoami()` returns `Deltasthic` (org account direct login)
 
 ## Open blockers
-1. **git-lfs not installed.** Blocks Phase 9 (eval against real weights). Fix: `sudo apt install git-lfs && git lfs install && git lfs pull`.
+_None._ git-lfs installed, weights pulled, LoRA merged into base, eval ran clean.
+
+## Phase 9 — Eval results (4 tasks × 5 seeds, weighted_final score)
+
+| mode | dry | weather | safety_car | champ | **avg** |
+|---|---|---|---|---|---|
+| random | 0.40 | 0.34 | 0.33 | 0.21 | **0.32** |
+| untrained | 0.51 | 0.41 | 0.53 | 0.27 | **0.43** |
+| trained | 0.52 | 0.56 | 0.55 | 0.52 | **0.54** |
+| expert | 0.84 | 0.95 | 0.94 | 0.97 | **0.92** |
+
+- Trained > untrained on every task; biggest jump championship_decider (+0.25)
+- Trained std=0.0 across seeds (greedy decode, deterministic command sequence)
+- Gap to expert ceiling: 0.38 — room to grow but clear training signal demonstrated
 
 ## Phase 6 — GRPO training (Shashwat's run, merged into dev)
 - Commit: `eb9f4bf "Add trained Unsloth vLLM GRPO model and results"` (Shashwat, 2026-04-25 13:07)

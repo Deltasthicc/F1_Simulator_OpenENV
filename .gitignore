@@ -71,6 +71,8 @@ htmlcov/
 .pytest_cache/
 
 # External research notes (private — never commit)
+[External]*.md
+!README.md
 
 # Docker volumes / data caches that shouldn't be in git
 data/*.cache
@@ -93,10 +95,23 @@ unsloth_compiled_cache/
 train.py.bak*
 train.py.before_*
 train.py.broken_*
-# Keep final trained GRPO model
+
+# Keep final trained GRPO model (LoRA adapters only — full merged shards exceed GitHub's 2GB LFS limit)
 !grpo_v1/
 !grpo_v1/**
+grpo_v1/merged-*/
+grpo_v1/merged-*/**
 
-# local copied repo / notebook workspace
-notebooks/F1_Simulator_OpenENV/
+# SFT training artifacts (regeneratable; full merged checkpoints are huge)
+sft_checkpoints_v1/merged/
+sft_checkpoints_v1/merged/**
 
+# Local RFT artifacts
+rft_dataset*.jsonl
+rft_checkpoints*/
+
+# main's extra grpo_v1 checkpoints (we ship grpo_v2 instead)
+grpo_v1/checkpoint-5*/
+grpo_v1/checkpoint-6*/
+grpo_v1/checkpoint-7*/
+grpo_v1/checkpoint-8*/

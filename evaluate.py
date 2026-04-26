@@ -137,8 +137,14 @@ def _maybe_build_llm_generator(mode: str, model: str | None):
     return None
 
 
+_LLM_GENERATOR_CACHE: dict[str, callable] = {}
+_SAMPLE_TEMP: float = 0.0  # 0.0 = greedy; >0 = do_sample with that temperature
+
+
 def _build_local_llm_generator(model: str):
-    """Load a transformers model on demand and return an obs→text callable."""
+    """Load a transformers model once per process and return an obs→text callable."""
+    if model in _LLM_GENERATOR_CACHE:
+        return _LLM_GENERATOR_CACHE[model]
     try:
         import torch  # noqa: F401
         from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -151,24 +157,44 @@ def _build_local_llm_generator(model: str):
 
     import torch as _torch
     tokenizer = AutoTokenizer.from_pretrained(model, trust_remote_code=True)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
     dtype = _torch.bfloat16 if _torch.cuda.is_available() else _torch.float32
     lm = AutoModelForCausalLM.from_pretrained(
         model, torch_dtype=dtype, device_map="auto", trust_remote_code=True
     )
+    lm.eval()
 
     def generate(obs, history):
         chat = [{"role": "system", "content": SYSTEM_PROMPT}]
         chat.extend(history[-6:])  # cap context
         chat.append({"role": "user", "content": format_obs(obs)})
         if hasattr(tokenizer, "apply_chat_template"):
-            text = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
+            try:
+                text = tokenizer.apply_chat_template(
+                    chat, tokenize=False, add_generation_prompt=True,
+                    enable_thinking=False,  # Qwen3 default has thinking ON; we want bare commands
+                )
+            except TypeError:
+                text = tokenizer.apply_chat_template(
+                    chat, tokenize=False, add_generation_prompt=True,
+                )
         else:
             text = "\n".join(f"{m['role']}: {m['content']}" for m in chat) + "\nassistant:"
         inputs = tokenizer(text, return_tensors="pt").to(lm.device)
+        gen_kwargs = {
+            "max_new_tokens": 64,
+            "pad_token_id": tokenizer.pad_token_id,
+        }
+        if _SAMPLE_TEMP > 0:
+            gen_kwargs.update({"do_sample": True, "temperature": _SAMPLE_TEMP, "top_p": 0.9})
+        else:
+            gen_kwargs["do_sample"] = False
         with _torch.no_grad():
-            out = lm.generate(**inputs, max_new_tokens=64, do_sample=False)
+            out = lm.generate(**inputs, **gen_kwargs)
         return tokenizer.decode(out[0][inputs["input_ids"].shape[-1] :], skip_special_tokens=True)
 
+    _LLM_GENERATOR_CACHE[model] = generate
     return generate
 
 
@@ -526,4 +552,10 @@ if __name__ == "__main__":
     parser.add_argument("--output-png", default="results/eval_curve.png")
     parser.add_argument("--no-memory", action="store_true")
     parser.add_argument("--use-memory", action="store_true")
-    main(parser.parse_args())
+    parser.add_argument("--sample-temp", type=float, default=0.0,
+                        help="Decoding temperature (0 = greedy, >0 = do_sample)")
+    args = parser.parse_args()
+    _SAMPLE_TEMP = args.sample_temp
+    # Re-bind into module so cached generator picks up the temp
+    import sys as _sys; _sys.modules[__name__]._SAMPLE_TEMP = args.sample_temp
+    main(args)

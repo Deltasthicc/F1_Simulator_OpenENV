@@ -22,19 +22,21 @@ Updated after each phase gate. If anything kills the session, read this top-to-b
 - [x] Phase 6 — Full GRPO 500 steps Qwen3-4B (Shashwat — committed via main, merged into dev as `d763d0b`)
 - [x] Phase 7 — Landing page LIVE at https://f1.chinnaboina.com/
 - [x] Phase 8 — HF Space LIVE (Deltasthic/f1-strategist serves landing page)
-- [ ] Phase 9 — Eval against trained checkpoint **— NEXT**, but BLOCKED on `git lfs pull` (need git-lfs install for actual safetensors weights)
-- [ ] Phase 10 — Demo polish: re-render before/after GIFs with real trained checkpoint, update blog with real numbers, record video, publish blog + YouTube
-- [ ] Phase 11 — HF Hub model push (`Deltasthic/f1-strategist-qwen3-4b-grpo`), pre-push checklist, tag `v1.0-finale`, submit official form
-- [~] Phase 12 — Historical replay loader stubbed; can run after Phase 9 if time
+- [x] Phase 9 — Eval against trained checkpoint (LoRA merged → `grpo_v1/merged-500/`, results at `results/eval_summary.json` + `results/eval_curve.png`)
+- [x] Phase 10 — Iter 0–4: SFT v3 + GRPO v2 — **0.627 avg** champion (was 0.538). 5 bugs caught + fixed.
+- [x] Phase 11a — Merged `origin/main` into `dev`, integrating UI/Space + keeping our model + bug-fixed eval
+- [ ] Phase 11b — HF Hub model push: replace `Deltasthic/f1-strategist-qwen3-4b-grpo` with `grpo_v2/` adapter
+- [ ] Phase 11c — Final commit + push to GitHub, submit hackathon form
 
-## Resume markers when ready
-**NEXT BLOCKER:** `git-lfs` not installed. The `grpo_v1/*.safetensors` files are 134-byte LFS pointers, not real weights. To unblock:
-```
-sudo apt install git-lfs       # one sudo prompt
-git lfs install                # configures filters
-git lfs pull                   # downloads actual weights from origin
-```
-After that, `grpo_v1/checkpoint-500/adapter_model.safetensors` will be the real model and we can run `evaluate.py --model grpo_v1/checkpoint-500`.
+## Champion model
+**`grpo_v2/`** — SFT v3 (enriched obs, thinking-off render) → GRPO v2 (200 steps, no Unsloth, no vLLM, beta=0.005, num_generations=8). Avg eval **0.627** vs untrained 0.429 (+0.20). See `results/journey.png`, `results/scenario_breakdown.png`, `results/comparison_real.png`.
+
+## Five bugs caught and fixed (the journey)
+1. **Silent scripted-fallback bug** in main's `evaluate.py` → reported 0.79 was actually a hand-coded rule policy, never the model. Verified bit-exact match by running scripted policy in isolation.
+2. **Qwen3 thinking-mode trap** — default reasoning-on with `max_new_tokens=64` → unparseable rambles → `parse_action()` fell through to STAY_OUT every step.
+3. **Train/eval format mismatch** — flipping `enable_thinking=False` only at eval broke the chat-template prefix the model never saw.
+4. **`format_obs` stripped scenario disambiguation** — model couldn't tell `late_safety_car` from `dry_strategy_sprint` at lap 0. Restored `obs.message` + `obs.hint`.
+5. **Cold GRPO collapse** — vanilla GRPO from base Qwen3 plateaued at 0.54 (frac_reward_zero_std → 1.0). Fixed by SFT warm-start before GRPO (per `TRAINING.md`'s prescribed but skipped recipe).
 
 ## Phase log
 
@@ -72,7 +74,20 @@ After that, `grpo_v1/checkpoint-500/adapter_model.safetensors` will be the real 
 - HF_TOKEN: real value confirmed in .env, `whoami()` returns `Deltasthic` (org account direct login)
 
 ## Open blockers
-1. **git-lfs not installed.** Blocks Phase 9 (eval against real weights). Fix: `sudo apt install git-lfs && git lfs install && git lfs pull`.
+_None._ git-lfs installed, weights pulled, LoRA merged into base, eval ran clean.
+
+## Phase 9 — Eval results (4 tasks × 5 seeds, weighted_final score)
+
+| mode | dry | weather | safety_car | champ | **avg** |
+|---|---|---|---|---|---|
+| random | 0.40 | 0.34 | 0.33 | 0.21 | **0.32** |
+| untrained | 0.51 | 0.41 | 0.53 | 0.27 | **0.43** |
+| trained | 0.52 | 0.56 | 0.55 | 0.52 | **0.54** |
+| expert | 0.84 | 0.95 | 0.94 | 0.97 | **0.92** |
+
+- Trained > untrained on every task; biggest jump championship_decider (+0.25)
+- Trained std=0.0 across seeds (greedy decode, deterministic command sequence)
+- Gap to expert ceiling: 0.38 — room to grow but clear training signal demonstrated
 
 ## Phase 6 — GRPO training (Shashwat's run, merged into dev)
 - Commit: `eb9f4bf "Add trained Unsloth vLLM GRPO model and results"` (Shashwat, 2026-04-25 13:07)

@@ -26,10 +26,15 @@ Reward design (TRL mode):
 from __future__ import annotations
 
 # Import Unsloth early so its patches apply before trl/transformers/peft.
-try:
-    import unsloth
-except Exception:
-    pass
+# Skip the import entirely when --no-unsloth is on the CLI; otherwise Unsloth
+# monkeypatches TRL's GRPOTrainer with code that assumes TRL >= 0.22, which
+# breaks our pinned 0.18.2 (NameError: truncate_with_protected_tokens).
+import sys as _sys
+if "--no-unsloth" not in _sys.argv:
+    try:
+        import unsloth
+    except Exception:
+        pass
 
 
 import argparse
@@ -223,17 +228,18 @@ def _run_trl(args) -> None:
         save_steps=args.save_steps,
         learning_rate=args.learning_rate,
 
-        # GRPO-specific
-        num_generations=4,
+        # GRPO-specific — bumped completion length so model can output bare command
+        # without thinking-mode rambles cutting it off; num_generations=8 for more
+        # variance per group → fewer zero-advantage groups.
+        num_generations=8,
         temperature=0.9,
-        max_completion_length=96,
+        max_completion_length=128,
         max_prompt_length=1536,
 
-        # Stability / vLLM
-        beta=0.01,
-        use_vllm=True,
-        vllm_mode="colocate",
-        vllm_gpu_memory_utilization=0.30,
+        # Stability — vLLM disabled because not installed; HF generate is slower
+        # but works with our stack.
+        beta=0.005,
+        use_vllm=False,
         bf16=True,
         report_to="none",
     )
@@ -247,6 +253,11 @@ def _run_trl(args) -> None:
         args=config,
         train_dataset=dataset,
     )
+
+    # Patch missing vision attributes (text-only model; Unsloth's GRPO cache assumes VLM)
+    for attr in ("image_token_id", "vision_start_token_id", "vision_end_token_id"):
+        if not hasattr(trainer, attr):
+            setattr(trainer, attr, None)
 
     print("Starting GRPO training …")
     trainer.train()
@@ -314,10 +325,9 @@ def _load_model_with_lora(model_name: str, args):
                 model_name=model_name,
                 max_seq_length=2048,
                 load_in_4bit=False,
-                fast_inference=True,
+                fast_inference=False,
                 trust_remote_code=False,
                 max_lora_rank=16,
-                gpu_memory_utilization=0.30,
             )
             model = FastLanguageModel.get_peft_model(
                 model,

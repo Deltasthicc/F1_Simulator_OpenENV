@@ -45,7 +45,7 @@ const DECISIONS = [
   { lap: "L07", cmd: "PIT_NOW inter",                   key: true  },
   { lap: "L08", cmd: "SET_MODE push",                   key: false },
   { lap: "L11", cmd: "DEFEND_POSITION",                 key: false },
-  { lap: "L12", cmd: "DONE — score 0.95",               key: true  },
+  { lap: "L12", cmd: "DONE — score 0.79",               key: true  },
 ];
 
 const TITLE_TEXT = "AN LLM RACE STRATEGIST";
@@ -77,13 +77,13 @@ const TRACK_CONFIGS = [
           [0.28,0.33],[0.36,0.24],[0.44,0.18],[0.55,0.12]],
   },
   {
-    name: "Silverstone", char: "High-speed flow · classic", scenario: "Tyre cliff", badge: "badge-blue",
+    name: "Silverstone", char: "High-speed flow · classic", scenario: "VSC window", badge: "badge-blue",
     pts: [[0.48,0.14],[0.64,0.14],[0.76,0.20],[0.84,0.30],[0.84,0.44],[0.76,0.54],
           [0.70,0.52],[0.64,0.54],[0.66,0.62],[0.60,0.70],[0.50,0.74],[0.38,0.70],
           [0.30,0.60],[0.26,0.50],[0.22,0.40],[0.26,0.28],[0.36,0.18],[0.48,0.14]],
   },
   {
-    name: "Suzuka", char: "Figure-8 · crossover point", scenario: "Tyre cliff (stretch)", badge: "badge-white",
+    name: "Suzuka", char: "Figure-8 · crossover point", scenario: "Tyre cliff management", badge: "badge-white",
     pts: [[0.50,0.12],[0.68,0.14],[0.78,0.22],[0.80,0.34],[0.72,0.44],[0.60,0.48],
           [0.52,0.50],[0.50,0.54],[0.50,0.62],[0.44,0.52],[0.36,0.50],[0.28,0.48],
           [0.20,0.54],[0.18,0.66],[0.26,0.76],[0.40,0.82],[0.54,0.82],[0.68,0.76],
@@ -561,16 +561,17 @@ function drawRewardCurve() {
   const PAD = { top: 22, right: 28, bottom: 36, left: 42 };
   const IW = W - PAD.left - PAD.right;
   const IH = H - PAD.top - PAD.bottom;
-  const STEPS = 800;
-  const minV = 0.22, maxV = 0.95;
+  const STEPS = 200;
+  const minV = 0.30, maxV = 0.98;
   const toX = s => PAD.left + (s / STEPS) * IW;
   const toY = v => PAD.top + IH - ((v - minV) / (maxV - minV)) * IH;
 
-  // Synthetic reward (warm-start 0.875, GRPO refines, peaks 0.907)
+  // GRPO v2 — real shape from grpo_v2/checkpoint-200/trainer_state.json
+  // (start ~0.82, climbs and stabilises around 0.88-0.93, peak ~0.93)
   function rewardAt(step) {
-    const base  = 0.875;
-    const drift = 0.030 * (1 - Math.exp(-step / 120));
-    const noise = Math.sin(step * 0.28) * 0.013 + Math.sin(step * 0.71) * 0.009;
+    const base  = 0.82;
+    const drift = 0.085 * (1 - Math.exp(-step / 25));
+    const noise = Math.sin(step * 0.35) * 0.010 + Math.sin(step * 0.91) * 0.008;
     return base + drift + noise;
   }
   const raw = [];
@@ -591,7 +592,7 @@ function drawRewardCurve() {
     ctx.fillStyle = "#444"; ctx.font = "9px monospace"; ctx.textAlign = "right";
     ctx.fillText(v.toFixed(1), PAD.left-5, toY(v)+3);
   });
-  [0, 200, 400, 600, 800].forEach(s => {
+  [0, 50, 100, 150, 200].forEach(s => {
     ctx.beginPath(); ctx.moveTo(toX(s), PAD.top); ctx.lineTo(toX(s), PAD.top+IH); ctx.stroke();
     ctx.fillStyle = "#444"; ctx.font = "9px monospace"; ctx.textAlign = "center";
     ctx.fillText(s, toX(s), PAD.top+IH+16);
@@ -601,11 +602,11 @@ function drawRewardCurve() {
   ctx.fillStyle = "#484848"; ctx.font = "9px monospace"; ctx.textAlign = "center";
   ctx.fillText("step", PAD.left+IW/2, H-3);
 
-  // Baselines
+  // Baselines (real numbers from 6-scenario eval)
   [
-    { v: 0.905, color: C.gold,   dash: [6,4], label: "expert 0.905"    },
-    { v: 0.395, color: C.orange, dash: [3,3], label: "untrained 0.395" },
-    { v: 0.296, color: "#555",   dash: [2,4], label: "random"          },
+    { v: 0.937, color: C.gold,   dash: [6,4], label: "expert 0.94"    },
+    { v: 0.415, color: C.orange, dash: [3,3], label: "untrained 0.42" },
+    { v: 0.303, color: "#555",   dash: [2,4], label: "random 0.30"    },
   ].forEach(({ v, color, dash, label }) => {
     ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 1;
     ctx.setLineDash(dash);

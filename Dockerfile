@@ -60,6 +60,9 @@ COPY client.py     /app/client.py
 COPY inference.py  /app/inference.py
 COPY server        /app/server
 COPY data          /app/data
+COPY README.md     /app/README.md
+COPY blog.md       /app/blog.md
+COPY openenv       /app/openenv
 
 # ── Copy grpo_v1 LoRA adapter (132 MB) ────────────────────────────────────
 # Only copy the essential files; intermediate checkpoints are not needed.

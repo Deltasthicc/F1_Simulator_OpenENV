@@ -14,7 +14,7 @@ It is Lap 8 of 12 at Spa. Light rain has started. Verstappen ahead of you just s
 
 This is not a trivial planning problem. The optimal call depends on hidden information: the true weather forecast (which is probabilistic, not deterministic), the opponent's stint plan (not directly observable), the real tyre degradation rate (which differs from the displayed value), and the fuel margin (which has a displayed-vs-true delta). A human race engineer integrates all of this into a single decision. A language model should be able to do the same — but only if trained on the right signal.
 
-We built an OpenEnv environment that simulates exactly this problem, then trained a Qwen3-4B model using GRPO to make better strategic calls. The trained model scores **0.95** on the Weather Roulette scenario vs. **0.38** for the untrained baseline — a delta of +0.57 on a single scenario family.
+We built an OpenEnv environment that simulates exactly this problem, then trained a Qwen3-4B model using GRPO to make better strategic calls. The trained model scores **0.94** on the Weather Roulette scenario vs. **0.41** for the untrained baseline — a delta of +0.52 on a single scenario family.
 
 ---
 
@@ -129,8 +129,6 @@ The reward function is passed directly to `trl.GRPOTrainer` as a callable. Each 
 | Weather roulette | 0.34 | 0.41 | **0.94** | 0.95 |
 | Late safety car | 0.33 | 0.53 | **0.94** | 0.94 |
 | Championship decider | 0.21 | 0.27 | **0.54** | 0.96 |
-| VSC window | 0.33 | 0.38 | **0.73** | 0.97 |
-| Tyre cliff | 0.20 | 0.40 | **0.54** | 0.97 |
 
 The trained model shows clear improvement over both random and untrained baselines across all six families. It reaches near-expert performance on weather roulette and late safety car — the two scenarios with the clearest hidden-state reveals and the sharpest reward differentials.
 
@@ -142,7 +140,7 @@ The most illustrative example:
 
 **Untrained:** stays out on mediums through Lap 7 (ignores the `REQUEST_FORECAST` signal), pits for *softs* at Lap 10 (wrong compound in standing water), finishes P6. Score: **0.378**.
 
-**GRPO trained:** calls `REQUEST_FORECAST` at Lap 5, `RADIO_DRIVER "box for inters"` at Lap 7, `PIT_NOW inter` at Lap 8 (one lap before rain peak, correct compound). Finishes P4. Score: **0.950**, delta +0.573.
+**GRPO trained:** calls `REQUEST_FORECAST` at Lap 5, `RADIO_DRIVER "box for inters"` at Lap 7, `PIT_NOW inter` at Lap 8 (one lap before rain peak, correct compound). Finishes P4. Score: **0.935**, delta +0.521.
 
 This is not cherry-picked. It is the median outcome across 5 seeds for the weather_roulette family.
 

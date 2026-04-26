@@ -664,6 +664,11 @@ function setupSimWidget() {
 
   if (!scenarioSel) return;
 
+  // Track map
+  const trackSvg = document.getElementById("track-svg");
+  const trackMap = trackSvg && window.TrackMap ? new window.TrackMap(trackSvg) : null;
+  if (trackMap) trackMap.setScenario(scenarioSel.value);
+
   const widgetLabel = document.getElementById("sim-widget-label");
   const POLICY_LABELS = {
     heuristic: "heuristic (rule-based)",
@@ -682,7 +687,10 @@ function setupSimWidget() {
     if (cmdPre) cmdPre.textContent = `python inference.py --task ${task} --seed ${seed}${modelFlag}`;
     if (widgetLabel) widgetLabel.textContent = `LIVE RACE SIMULATOR — ${POLICY_LABELS[model] || model}`;
   }
-  scenarioSel.addEventListener("change", updateCmd);
+  scenarioSel.addEventListener("change", () => {
+    updateCmd();
+    if (trackMap) trackMap.setScenario(scenarioSel.value);
+  });
   seedSel.addEventListener("change", updateCmd);
   if (modelSel) modelSel.addEventListener("change", updateCmd);
   updateCmd();
@@ -843,10 +851,12 @@ function setupSimWidget() {
       const laps = data.laps;
       const LAP_DELAY = 320; // ms per lap
       if (statusEl) { statusEl.textContent = "racing…"; }
+      if (trackMap) trackMap.reset();
       for (let i = 0; i < laps.length; i++) {
         const lap = laps[i];
         setTelem(lap.lap, lap.total_laps, lap.position, lap.compound, lap.health, lap.fuel, lap.weather);
         appendLap(lap);
+        if (trackMap) trackMap.updateLap(lap.lap, lap.total_laps, lap.position);
         if (i === laps.length - 1) setScore(data.final_score);
         await sleep(LAP_DELAY);
       }

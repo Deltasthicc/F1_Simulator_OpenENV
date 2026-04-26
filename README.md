@@ -40,7 +40,7 @@ models:
 | Interactive Gradio playground | [/web](https://huggingface.co/spaces/Deltasthic/f1-strategist) → click **Interactive** |
 | Blog post (writeup) | [blog.md](https://huggingface.co/spaces/Deltasthic/f1-strategist/blob/main/blog.md) |
 | Training notebook (Colab) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Deltasthicc/F1_Simulator_OpenENV/blob/main/notebooks/f1_strategist_training_colab.ipynb) |
-| Demo video | [YouTube — link in demo-assets/youtube-link.txt](demo-assets/youtube-link.txt) |
+| Eval results (PNG) | [eval_curve.png](https://huggingface.co/spaces/Deltasthic/f1-strategist/blob/main/results/eval_curve.png) |
 | Model weights (LoRA) | [Deltasthic/f1-strategist-qwen3-4b-grpo](https://huggingface.co/Deltasthic) |
 | GitHub | [Deltasthicc/F1\_Simulator\_OpenENV](https://github.com/Deltasthicc/F1_Simulator_OpenENV) |
 
@@ -189,7 +189,7 @@ Full reproduction in [`TRAINING.md`](TRAINING.md). GPU server playbook in
 
 Two layers of demo:
 
-1. **Local matplotlib replay.** `server/visualizer.py` renders any rollout as a top-down GIF/MP4: track centerline + corner labels + ego car + opponents + weather state + pit-window indicators. Generated automatically by `python rollout.py --render`. Used for blog and video.
+1. **Local matplotlib replay.** `server/visualizer.py` renders any rollout as a top-down GIF/MP4: track centerline + corner labels + ego car + opponents + weather state + pit-window indicators. Generated automatically by `python rollout.py --render`.
 2. **Gradio web UI in the HF Space.** Built into the OpenEnv server via the `--enable-interface` flag. Judges and visitors can hit the Space URL, click `Reset`, manually issue strategic commands, and watch the simulated race progress with a live per-lap chart. Enabled in `Dockerfile` by `ENABLE_WEB_INTERFACE=1`.
 
 ## Self-improvement loop
@@ -231,11 +231,10 @@ Set `HF_TOKEN` and (optionally) `IMAGE_NAME` to route inference through the dock
 
 ## Demo assets
 
-- Mini-blog: [`demo-assets/blog-post.md`](demo-assets/blog-post.md)
-- Video script (~1:45 runtime): [`demo-assets/video-script.md`](demo-assets/video-script.md)
-- HF Space: see [`demo-assets/hf-space-link.txt`](demo-assets/hf-space-link.txt) (populated after deploy)
-- HF blog: see [`demo-assets/hf-blog-link.txt`](demo-assets/hf-blog-link.txt)
-- YouTube: see [`demo-assets/youtube-link.txt`](demo-assets/youtube-link.txt)
+- Blog post: [`blog.md`](https://huggingface.co/spaces/Deltasthic/f1-strategist/blob/main/blog.md)
+- HF Space: [`Deltasthic/f1-strategist`](https://huggingface.co/spaces/Deltasthic/f1-strategist)
+- Model weights: [`Deltasthic/f1-strategist-qwen3-4b-grpo`](https://huggingface.co/Deltasthic/f1-strategist-qwen3-4b-grpo)
+- Training notebook: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Deltasthicc/F1_Simulator_OpenENV/blob/main/notebooks/f1_strategist_training_colab.ipynb)
 
 ## Authors
 

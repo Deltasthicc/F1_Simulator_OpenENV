@@ -271,7 +271,14 @@ def simulate_episode(req: SimulateRequest) -> dict[str, Any]:
 def get_readme() -> Response:
     readme = Path(__file__).parent.parent / "README.md"
     if readme.exists():
-        return Response(content=readme.read_text(encoding="utf-8"), media_type="text/markdown")
+        raw = readme.read_text(encoding="utf-8")
+        # Strip HF Space YAML frontmatter (--- ... ---) before serving so the
+        # OpenEnv playground sidebar renders clean markdown instead of raw YAML.
+        if raw.startswith("---"):
+            end = raw.find("\n---", 3)
+            if end != -1:
+                raw = raw[end + 4:].lstrip("\n")
+        return Response(content=raw, media_type="text/markdown")
     return Response(
         content="# F1 Strategist\nLLM race strategy environment. "
                 "See [GitHub](https://github.com/Deltasthicc/F1_Simulator_OpenENV).",

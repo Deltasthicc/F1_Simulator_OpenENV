@@ -284,8 +284,8 @@
 <section id="media" class="screen">
   <div class="section-inner">
     <p class="section-label">MATERIALS</p>
-    <h2 class="section-title">Blog, notebook &amp; demo video</h2>
-    <p class="section-sub">All judge-required materials in one place. The Colab notebook is self-contained and re-runnable. The blog post is the full writeup on HF. The video walks through the live environment.</p>
+    <h2 class="section-title">Blog, notebook &amp; results</h2>
+    <p class="section-sub">All judge-required materials in one place. The Colab notebook is self-contained and re-runnable. The blog post is the full technical writeup on HF. Results show trained vs untrained performance across all four scenario families.</p>
 
     <div class="media-grid">
       <div class="media-card" data-reveal>
@@ -304,14 +304,16 @@
       <div class="media-card" data-reveal>
         <div class="media-icon">
           <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.4">
-            <circle cx="24" cy="24" r="18"/>
-            <path d="M20 16 L32 24 L20 32 Z" fill="currentColor" stroke="none"/>
+            <polyline points="6,38 18,22 28,30 38,12 44,18"/>
+            <circle cx="18" cy="22" r="2.5" fill="currentColor" stroke="none"/>
+            <circle cx="28" cy="30" r="2.5" fill="currentColor" stroke="none"/>
+            <circle cx="38" cy="12" r="2.5" fill="currentColor" stroke="none"/>
           </svg>
         </div>
-        <div class="media-card-label">DEMO VIDEO</div>
-        <h3 class="media-card-title">2-minute environment walkthrough</h3>
-        <p class="media-card-desc">Shows the environment in action, the trained vs untrained comparison on Weather Roulette, and the key pit-call decision at Lap 7. Link in README.</p>
-        <a class="media-btn media-btn--ghost" href="https://github.com/Deltasthicc/F1_Simulator_OpenENV#readme" target="_blank" rel="noreferrer">See README for link →</a>
+        <div class="media-card-label">TRAINED MODEL</div>
+        <h3 class="media-card-title">GRPO checkpoint on HF Hub</h3>
+        <p class="media-card-desc">Qwen3-4B fine-tuned with GRPO on 500 steps across all four scenario families. Weather Roulette: <strong>0.935 trained vs 0.414 untrained</strong>. LoRA adapter, 132 MB.</p>
+        <a class="media-btn" href="https://huggingface.co/Deltasthic/f1-strategist-qwen3-4b-grpo" target="_blank" rel="noreferrer">View model weights →</a>
       </div>
 
       <div class="media-card" data-reveal>
@@ -397,10 +399,16 @@
           <div class="telem-item"><span class="telem-k">SCORE</span><span class="telem-v red" id="telem-score">—</span></div>
         </div>
 
-        <!-- Lap log -->
-        <div class="sim-log-wrap">
-          <div class="sim-log-label">DECISION LOG</div>
-          <ol id="sim-log" class="sim-log"></ol>
+        <!-- Lap log + race map (two columns) -->
+        <div class="sim-output-body">
+          <div class="sim-log-wrap">
+            <div class="sim-log-label">DECISION LOG</div>
+            <ol id="sim-log" class="sim-log"></ol>
+          </div>
+          <div class="sim-track-wrap">
+            <div class="sim-log-label">RACE MAP</div>
+            <svg id="track-svg" class="sim-track-svg"></svg>
+          </div>
         </div>
 
         <!-- Final result (shown after race) -->
@@ -502,6 +510,7 @@ curl -X POST .../simulate \
   </div>
 </section>
 
+<script src="/static/track-map.js" defer></script>
 <script src="/static/app.js" defer></script>
 </body>
 </html>

@@ -120,7 +120,7 @@ def replace_block(text: str, header_regex: str, replacement: str) -> tuple[str, 
 
 
 def update_readme(data: dict, dry_run: bool) -> bool:
-    txt = README.read_text()
+    txt = README.read_text(encoding="utf-8")
     new_table = render_readme_table(data)
     new, n = replace_block(
         txt,
@@ -133,7 +133,7 @@ def update_readme(data: dict, dry_run: bool) -> bool:
     if dry_run:
         print(f"[README] would update {len(txt) - len(new)} chars")
         return True
-    README.write_text(new)
+    README.write_text(new, encoding="utf-8")
     print(f"[README] updated ({n} table)")
     return True
 
@@ -142,7 +142,7 @@ def update_blog(data: dict, dry_run: bool) -> bool:
     if not BLOG.exists():
         print(f"[blog]   WARN: {BLOG} does not exist; skipping")
         return False
-    txt = BLOG.read_text()
+    txt = BLOG.read_text(encoding="utf-8")
     new_table = render_blog_table(data)
     new, n = replace_block(
         txt,
@@ -171,7 +171,7 @@ def update_blog(data: dict, dry_run: bool) -> bool:
     if dry_run:
         print(f"[blog]   would update")
         return True
-    BLOG.write_text(new)
+    BLOG.write_text(new, encoding="utf-8")
     print(f"[blog]   updated ({n} table + headline numbers)")
     return True
 
@@ -180,7 +180,7 @@ def update_notebook(data: dict, dry_run: bool) -> bool:
     if not NOTEBOOK.exists():
         print(f"[ipynb]  WARN: {NOTEBOOK} not found")
         return False
-    nb = json.loads(NOTEBOOK.read_text())
+    nb = json.loads(NOTEBOOK.read_text(encoding="utf-8"))
     table = render_notebook_summary_table(data)
 
     updated_any = False

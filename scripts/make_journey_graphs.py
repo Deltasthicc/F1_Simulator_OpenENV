@@ -101,24 +101,64 @@ fig, ax = plt.subplots(figsize=(11, 5.5))
 # Color per stage: dim → orange (untrained) → orange (initial) → teal (SFT) → teal (RFT) → red (winner) → gold (expert)
 colors = [F1_DIM, F1_ORANGE, F1_ORANGE, F1_TEAL, F1_TEAL, F1_RED, F1_GOLD]
 xs = list(range(len(labels)))
-ax.plot(xs, avgs, marker="o", linewidth=2.5, color="#777", zorder=2, alpha=0.6)
+n = len(labels)
+ours_idx = 5
+ours_y = avgs[ours_idx]
+untr_y = avgs[1]
+expert_y = avgs[-1]
+
+# --- highlight zones (drawn first, behind everything) ---
+# "gap we closed" — from untrained baseline up to ours
+ax.axhspan(untr_y, ours_y, color=F1_RED, alpha=0.10, zorder=0)
+# "headroom" — from ours up to expert ceiling
+ax.axhspan(ours_y, expert_y, color=F1_GOLD, alpha=0.06, zorder=0)
+# bold band centered on ours so the eye lands on it
+ax.axhspan(ours_y - 0.012, ours_y + 0.012, color=F1_RED, alpha=0.55, zorder=1)
+
+# horizontal helper rules
+ax.axhline(y=expert_y, linestyle=":", color=F1_GOLD, alpha=0.6, linewidth=1.2, label=f"expert ceiling  ({expert_y:.3f})")
+ax.axhline(y=untr_y, linestyle=":", color=F1_ORANGE, alpha=0.55, linewidth=1.2, label=f"untrained baseline  ({untr_y:.3f})")
+ax.axhline(y=ours_y, linestyle="-", color=F1_RED, alpha=0.95, linewidth=1.6,
+           label=f"★ ours (GRPO v2)  ({ours_y:.3f})")
+
+# right-margin labels for the bands
+ax.text(n - 0.6, (untr_y + ours_y) / 2, f"+{ours_y - untr_y:.2f}\nover untrained",
+        ha="right", va="center", fontsize=9, color=F1_RED, fontweight="bold", alpha=0.9)
+ax.text(n - 0.6, (ours_y + expert_y) / 2, f"−{expert_y - ours_y:.2f}\nto expert",
+        ha="right", va="center", fontsize=9, color=F1_GOLD, alpha=0.85)
+
+# --- the journey line + dots ---
+ax.plot(xs, avgs, marker="o", linewidth=2.5, color="#777", zorder=3, alpha=0.6)
 for i, (x, y, c) in enumerate(zip(xs, avgs, colors)):
-    s = 320 if i == 5 else 220
-    ax.scatter([x], [y], s=s, color=c, edgecolor=F1_BG, linewidth=1.6, zorder=3)
+    s = 380 if i == ours_idx else 220
+    edge = F1_INK if i == ours_idx else F1_BG
+    edge_w = 2.4 if i == ours_idx else 1.6
+    ax.scatter([x], [y], s=s, color=c, edgecolor=edge, linewidth=edge_w, zorder=5)
+    if i == ours_idx:
+        # halo ring around the champion
+        ax.scatter([x], [y], s=s + 320, color="none", edgecolor=F1_RED,
+                   linewidth=1.4, alpha=0.55, zorder=4)
     label = f"{y:.3f}"
-    offset = 14 if i != 5 else -24  # push GRPO v2 label below line for emphasis
+    offset = 14 if i != ours_idx else -28
     ax.annotate(label, (x, y), textcoords="offset points",
-                xytext=(0, offset), ha="center", fontsize=10, fontweight="bold",
-                color=c if i == 5 else F1_INK)
+                xytext=(0, offset), ha="center",
+                fontsize=11 if i == ours_idx else 10,
+                fontweight="bold",
+                color=c if i == ours_idx else F1_INK)
+
+# explicit "shipping checkpoint" callout near the champion
+ax.annotate("★ shipping checkpoint", xy=(ours_idx, ours_y),
+            xytext=(ours_idx - 1.4, ours_y + 0.18),
+            fontsize=10, color=F1_RED, fontweight="bold",
+            arrowprops=dict(arrowstyle="->", color=F1_RED, lw=1.2, alpha=0.8))
 
 ax.set_xticks(xs)
 ax.set_xticklabels(labels, fontsize=9, color=F1_INK)
 ax.set_ylabel("Average weighted_final  (4–6 scenarios × 5 seeds)", fontsize=10, color=F1_DIM)
 ax.set_title("F1 Strategist — training journey: random → expert    ★ = shipping checkpoint",
              fontsize=12, color=F1_INK, pad=12)
-ax.set_ylim(0.2, 1.0)
-ax.axhline(y=avgs[-1], linestyle=":", color=F1_GOLD, alpha=0.5, label="expert ceiling")
-ax.axhline(y=avgs[1], linestyle=":", color=F1_ORANGE, alpha=0.5, label="untrained baseline")
+ax.set_ylim(0.2, 1.02)
+ax.set_xlim(-0.5, n - 0.5)
 leg = ax.legend(loc="lower right", fontsize=9, frameon=False, labelcolor=F1_INK)
 _style_axes(ax, fig)
 plt.tight_layout()

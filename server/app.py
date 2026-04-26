@@ -83,126 +83,102 @@ if _STATIC_DIR.exists():
 class SimulateRequest(BaseModel):
     task: str = "weather_roulette"
     seed: int = 7
-    model: str = "heuristic"  # "heuristic" | "random"
-
-
-# Minimal valid action pool for the random policy
-_RANDOM_ACTIONS = [
-    "STAY_OUT", "INSPECT_TYRE_DEGRADATION", "REQUEST_FORECAST",
-    "ASSESS_UNDERCUT_WINDOW", "INSPECT_FUEL_MARGIN",
-    "PIT_NOW soft", "PIT_NOW medium", "PIT_NOW hard",
-    "SET_MODE push", "SET_MODE conserve", "SET_MODE race",
-    "DEFEND_POSITION", "HOLD_GAP 1",
-]
-
-_DIM_KEYS = [
-    "race_result", "strategic_decisions", "tyre_management",
-    "fuel_management", "comms_quality", "operational_efficiency",
-]
-
-
-def _surface_label(weather_dict: dict) -> str:
-    """Convert the WeatherState dict to a readable label."""
-    rain = weather_dict.get("rain_intensity", 0.0) if weather_dict else 0.0
-    surface = weather_dict.get("surface_state", "dry") if weather_dict else "dry"
-    if rain > 0.5 or surface == "wet":
-        return "heavy rain"
-    if rain > 0.15 or surface == "damp":
-        return "light rain"
-    return "dry"
+    model: str = "heuristic"  # "heuristic" | "random" | "grpo_v1" | "qwen3"
 
 
 @app.post("/simulate", include_in_schema=True)
 def simulate_episode(req: SimulateRequest) -> dict[str, Any]:
     """Run one episode with the chosen policy and return the full lap-by-lap trajectory."""
-    import random as _random
     import traceback
+    from pathlib import Path as _Path
+
+    # Import from server.simulate_utils — always resolvable since it's in the
+    # same package as app.py, no root-level sys.path manipulation needed.
+    from server.simulate_utils import (
+        SYSTEM_PROMPT, DIM_KEYS, parse_action, surface_label,
+        heuristic, random_action, get_scenario_family,
+    )
 
     try:
         policy_name = req.model.lower().strip()
+        policy_note = ""
+
         env = F1StrategistEnvironment()
         obs = env.reset(task=req.task, seed=req.seed)
+        family = get_scenario_family(req.task)
 
-        # Build the generator based on requested model
-        import sys as _sys, pathlib as _pl
-        _root = str(_pl.Path(__file__).parent.parent)
-        if _root not in _sys.path:
-            _sys.path.insert(0, _root)
+        # ── Build LLM generator for grpo_v1 / qwen3 ──────────────────────
+        llm_gen = None  # if None, we use the rule-based heuristic
 
-        from inference import _heuristic_generator as _heur, parse_action as _parse, SYSTEM_PROMPT as _sysprompt
-
-        policy_note = ""
-        generator = None  # callable(history, obs, task) -> str, or None for random
-
-        if policy_name == "random":
-            pass  # generator stays None
-
-        elif policy_name in ("grpo_v1", "grpo"):
-            # Try to load the trained LoRA checkpoint
-            checkpoint = _pl.Path(__file__).parent.parent / "grpo_v1"
+        if policy_name in ("grpo_v1", "grpo"):
+            checkpoint = _Path(__file__).parent.parent / "grpo_v1"
             if checkpoint.exists():
                 try:
-                    from transformers import AutoModelForCausalLM, AutoTokenizer
                     import torch
+                    from transformers import AutoModelForCausalLM, AutoTokenizer
+                    from peft import PeftModel
                     _tok = AutoTokenizer.from_pretrained(str(checkpoint), trust_remote_code=True)
                     _dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
-                    _lm  = AutoModelForCausalLM.from_pretrained(
-                        str(checkpoint), torch_dtype=_dtype,
-                        device_map="auto", trust_remote_code=True,
+                    # Load base then merge LoRA
+                    base_id = "unsloth/Qwen3-4B"
+                    _base = AutoModelForCausalLM.from_pretrained(
+                        base_id, torch_dtype=_dtype, device_map="auto", trust_remote_code=True,
                     )
-                    def generator(history, obs, task):
+                    _lm = PeftModel.from_pretrained(_base, str(checkpoint))
+                    _lm.eval()
+
+                    def llm_gen(history: list[dict]) -> str:
                         if hasattr(_tok, "apply_chat_template"):
-                            txt = _tok.apply_chat_template(history, tokenize=False, add_generation_prompt=True)
+                            txt = _tok.apply_chat_template(
+                                history, tokenize=False, add_generation_prompt=True)
                         else:
                             txt = "\n".join(f"{m['role']}: {m['content']}" for m in history) + "\nassistant:"
                         inp = _tok(txt, return_tensors="pt").to(_lm.device)
                         with torch.no_grad():
                             out = _lm.generate(**inp, max_new_tokens=64, do_sample=False)
                         return _tok.decode(out[0][inp["input_ids"].shape[-1]:], skip_special_tokens=True)
+
                     policy_name = "grpo_v1"
-                    policy_note = "Loaded grpo_v1 checkpoint."
+                    policy_note = "Running GRPO-trained Qwen3-4B + LoRA checkpoint."
                 except Exception as _e:
-                    generator = _heur
-                    policy_name = "grpo_v1 (heuristic fallback)"
-                    policy_note = f"Checkpoint found but transformers load failed: {_e}. Using heuristic."
+                    policy_note = f"grpo_v1 checkpoint found but could not load ({type(_e).__name__}: {_e}). Fell back to heuristic."
+                    policy_name = "grpo_v1 → heuristic fallback"
             else:
-                generator = _heur
-                policy_name = "grpo_v1 (heuristic fallback)"
-                policy_note = "grpo_v1 checkpoint not present on this server. Using heuristic stand-in."
+                policy_note = "grpo_v1 checkpoint not present on this server. Fell back to heuristic."
+                policy_name = "grpo_v1 → heuristic fallback"
 
         elif policy_name in ("qwen3", "qwen3-0.6b", "llm"):
             try:
-                from transformers import AutoModelForCausalLM, AutoTokenizer
                 import torch
+                from transformers import AutoModelForCausalLM, AutoTokenizer
                 _model_id = "Qwen/Qwen3-0.6B"
                 _tok = AutoTokenizer.from_pretrained(_model_id, trust_remote_code=True)
                 _dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
                 _lm  = AutoModelForCausalLM.from_pretrained(
-                    _model_id, torch_dtype=_dtype,
-                    device_map="auto", trust_remote_code=True,
+                    _model_id, torch_dtype=_dtype, device_map="auto", trust_remote_code=True,
                 )
-                def generator(history, obs, task):
+                _lm.eval()
+
+                def llm_gen(history: list[dict]) -> str:
                     if hasattr(_tok, "apply_chat_template"):
-                        txt = _tok.apply_chat_template(history, tokenize=False, add_generation_prompt=True)
+                        txt = _tok.apply_chat_template(
+                            history, tokenize=False, add_generation_prompt=True)
                     else:
                         txt = "\n".join(f"{m['role']}: {m['content']}" for m in history) + "\nassistant:"
                     inp = _tok(txt, return_tensors="pt").to(_lm.device)
                     with torch.no_grad():
                         out = _lm.generate(**inp, max_new_tokens=64, do_sample=False)
                     return _tok.decode(out[0][inp["input_ids"].shape[-1]:], skip_special_tokens=True)
+
                 policy_name = "qwen3-0.6b"
-                policy_note = "Loaded Qwen/Qwen3-0.6B from HuggingFace Hub."
+                policy_note = "Running Qwen3-0.6B (no RL training)."
             except Exception as _e:
-                generator = _heur
-                policy_name = "qwen3 (heuristic fallback)"
-                policy_note = f"Could not load Qwen3-0.6B ({_e}). Using heuristic stand-in."
+                policy_note = f"Could not load Qwen3-0.6B ({type(_e).__name__}: {_e}). Fell back to heuristic."
+                policy_name = "qwen3 → heuristic fallback"
 
-        else:
-            # Default: heuristic
-            generator = _heur
-            policy_name = "heuristic"
-
-        history: list[dict] = [{"role": "system", "content": _sysprompt}]
+        # ── Episode loop ─────────────────────────────────────────────────
+        history: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
+        seen: set[str] = set()
         laps: list[dict] = []
         safety_limit = max(obs.total_laps + 5, 60)
 
@@ -210,24 +186,22 @@ def simulate_episode(req: SimulateRequest) -> dict[str, Any]:
             if obs.done:
                 break
 
-            # Choose action
-            if generator is None:
-                # Random policy
-                action_str = _random.choice(_RANDOM_ACTIONS)
-                if obs.current_lap >= obs.total_laps:
-                    action_str = "DONE"
-            else:
+            if policy_name == "random":
+                action_str = random_action(obs.current_lap, obs.total_laps)
+            elif llm_gen is not None:
                 history.append({"role": "user", "content": str(obs.message)})
-                raw = generator(history, obs, req.task)
-                action_str = _parse(raw).command
+                raw = llm_gen(history)
+                action_str = parse_action(raw)
                 history.append({"role": "assistant", "content": action_str})
+            else:
+                # heuristic (also used as fallback for grpo/qwen when model unavailable)
+                action_str = heuristic(family, obs.current_lap, obs.total_laps, obs, seen)
 
             action = F1Action(command=action_str)
             rain = (obs.weather_current or {}).get("rain_intensity", 0.0)
-            key_decision = action_str.upper().startswith(
+            key = action_str.upper().startswith(
                 ("PIT_NOW", "RADIO_DRIVER", "REQUEST_FORECAST", "DONE",
-                 "ASSESS_UNDERCUT_WINDOW", "CHECK_OPPONENT")
-            )
+                 "ASSESS_UNDERCUT_WINDOW", "CHECK_OPPONENT", "INSPECT_TYRE"))
             laps.append({
                 "lap":        obs.current_lap,
                 "action":     action_str,
@@ -235,45 +209,42 @@ def simulate_episode(req: SimulateRequest) -> dict[str, Any]:
                 "compound":   obs.ego_tyre_compound,
                 "health":     round(float(obs.ego_tyre_health_pct), 1),
                 "fuel":       round(float(obs.ego_fuel_remaining_kg), 2),
-                "weather":    _surface_label(obs.weather_current),
+                "weather":    surface_label(obs.weather_current),
                 "rain":       round(float(rain), 2),
                 "total_laps": int(obs.total_laps),
-                "key":        key_decision,
+                "key":        key,
             })
             obs = env.step(action)
 
-        # Add terminal record
+        # Terminal record
+        rain_f = (obs.weather_current or {}).get("rain_intensity", 0.0)
         laps.append({
-            "lap":        int(obs.current_lap),
-            "action":     "DONE",
-            "position":   int(obs.ego_position),
-            "compound":   obs.ego_tyre_compound,
-            "health":     round(float(obs.ego_tyre_health_pct), 1),
-            "fuel":       round(float(obs.ego_fuel_remaining_kg), 2),
-            "weather":    _surface_label(obs.weather_current),
-            "rain":       round(float((obs.weather_current or {}).get("rain_intensity", 0.0)), 2),
-            "total_laps": int(obs.total_laps),
-            "key":        True,
+            "lap": int(obs.current_lap), "action": "DONE",
+            "position": int(obs.ego_position), "compound": obs.ego_tyre_compound,
+            "health": round(float(obs.ego_tyre_health_pct), 1),
+            "fuel": round(float(obs.ego_fuel_remaining_kg), 2),
+            "weather": surface_label(obs.weather_current),
+            "rain": round(float(rain_f), 2),
+            "total_laps": int(obs.total_laps), "key": True,
         })
 
-        mos = obs.multi_objective_scores or {}
+        mos   = obs.multi_objective_scores or {}
         score = float(mos.get("weighted_final", obs.score or 0.0))
-        dims  = {k: round(float(mos.get(k, 0.0)), 3) for k in _DIM_KEYS}
+        dims  = {k: round(float(mos.get(k, 0.0)), 3) for k in DIM_KEYS}
 
         return {
-            "task":        req.task,
-            "seed":        req.seed,
-            "laps":        laps,
-            "final_score": round(score, 4),
-            "final_pos":   int(obs.ego_position),
-            "dims":        dims,
-            "policy":      policy_name,
-            "policy_note": policy_note,
+            "task": req.task, "seed": req.seed,
+            "laps": laps, "final_score": round(score, 4),
+            "final_pos": int(obs.ego_position), "dims": dims,
+            "policy": policy_name, "policy_note": policy_note,
         }
 
     except Exception as exc:
         from fastapi import HTTPException
-        raise HTTPException(status_code=500, detail=f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}",
+        )
 
 
 # ---------------------------------------------------------------------------

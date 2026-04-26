@@ -644,42 +644,176 @@ function drawRewardCurve() {
   requestAnimationFrame(drawNext);
 }
 
-// ─── Sim widget ───────────────────────────────────────────────────────────────
+// ─── Live simulation runner ──────────────────────────────────────────────────
+const COMPOUND_COLORS = { soft: "#e10600", medium: "#ffd60a", hard: "#f0f0f0", inter: "#00d2be", wet: "#5bc0f8" };
+const WEATHER_LABELS  = { dry: "DRY", light_rain: "LIGHT RAIN", rain: "RAIN", heavy_rain: "STORM", "": "DRY" };
+
 function setupSimWidget() {
   const scenarioSel = document.getElementById("sim-scenario");
   const seedSel     = document.getElementById("sim-seed");
-  const modelSel    = document.getElementById("sim-model");
+  const runBtn      = document.getElementById("sim-run-btn");
   const cmdPre      = document.getElementById("sim-cmd");
-  const apiPre      = document.getElementById("sim-api");
-  const launchBtn   = document.getElementById("sim-launch");
   const copyBtn     = document.getElementById("sim-copy");
+  const output      = document.getElementById("sim-output");
+  const statusEl    = document.getElementById("sim-status");
+  const scenLabel   = document.getElementById("sim-scenario-label");
+  const logEl       = document.getElementById("sim-log");
+  const resultEl    = document.getElementById("sim-result");
+  const dimsEl      = document.getElementById("sim-dims");
 
   if (!scenarioSel) return;
 
-  function update() {
-    const task  = scenarioSel.value;
-    const seed  = seedSel.value;
-    const model = modelSel.value;
-    cmdPre.textContent = `python inference.py --task ${task} --seed ${seed} --model ${model} --verbose`;
-    apiPre.textContent =
-      `curl -X POST https://deltasthic-f1-strategist.hf.space/reset \\\n` +
-      `  -H "Content-Type: application/json" \\\n` +
-      `  -d '{"task":"${task}","seed":${seed}}'`;
+  function updateCmd() {
+    const task = scenarioSel.value;
+    const seed = seedSel.value;
+    if (cmdPre) cmdPre.textContent = `python inference.py --task ${task} --seed ${seed}`;
   }
+  scenarioSel.addEventListener("change", updateCmd);
+  seedSel.addEventListener("change", updateCmd);
+  updateCmd();
 
-  scenarioSel.addEventListener("change", update);
-  seedSel.addEventListener("change", update);
-  modelSel.addEventListener("change", update);
-  update();
-
-  // Copy button
-  if (copyBtn) {
+  // Copy local command
+  if (copyBtn && cmdPre) {
     copyBtn.addEventListener("click", () => {
       navigator.clipboard.writeText(cmdPre.textContent).then(() => {
         copyBtn.textContent = "copied!";
         copyBtn.classList.add("copied");
         setTimeout(() => { copyBtn.textContent = "copy"; copyBtn.classList.remove("copied"); }, 1800);
       }).catch(() => {});
+    });
+  }
+
+  // Telem helpers
+  function setTelem(lap, totalLaps, pos, compound, health, fuel, weather) {
+    const lapEl    = document.getElementById("telem-lap");
+    const posEl    = document.getElementById("telem-pos");
+    const tyreEl   = document.getElementById("telem-tyre");
+    const healthEl = document.getElementById("telem-health");
+    const fuelEl   = document.getElementById("telem-fuel");
+    const wxEl     = document.getElementById("telem-wx");
+    const bar      = document.getElementById("health-bar");
+
+    if (lapEl)    lapEl.textContent    = `${lap} / ${totalLaps}`;
+    if (posEl)    posEl.textContent    = `P${pos}`;
+    if (tyreEl) {
+      tyreEl.textContent  = compound.toUpperCase();
+      tyreEl.style.color  = COMPOUND_COLORS[compound] || C.ink;
+    }
+    if (healthEl) healthEl.textContent = `${health.toFixed(0)}%`;
+    if (fuelEl)   fuelEl.textContent   = `${fuel.toFixed(1)}kg`;
+    if (wxEl) {
+      wxEl.textContent = WEATHER_LABELS[weather] || weather.toUpperCase();
+      wxEl.style.color = weather.includes("rain") ? C.teal : C.dim;
+    }
+    if (bar) {
+      bar.style.width = `${Math.max(0, health)}%`;
+      bar.style.background = health > 60 ? C.teal : health > 30 ? C.orange : C.red;
+    }
+  }
+
+  function setScore(score) {
+    const el = document.getElementById("telem-score");
+    if (el) el.textContent = score > 0 ? score.toFixed(3) : "—";
+  }
+
+  function appendLap(lap) {
+    const li = document.createElement("li");
+    if (lap.key) li.classList.add("key-action");
+    const wxTag = lap.rain > 0.08 ? ` 🌧 ${(lap.rain * 100).toFixed(0)}%` : "";
+    li.innerHTML =
+      `<span class="sl-lap">L${String(lap.lap).padStart(2,"0")}</span>` +
+      `<span class="sl-pos">P${lap.position}</span>` +
+      `<span class="sl-act">${esc(lap.action)}</span>` +
+      `<span class="sl-note">${lap.compound} ${lap.health.toFixed(0)}%${wxTag}</span>`;
+    logEl.appendChild(li);
+    // Scroll to bottom
+    const wrap = logEl.closest(".sim-log-wrap");
+    if (wrap) wrap.scrollTop = wrap.scrollHeight;
+  }
+
+  function showResult(data) {
+    const posEl   = document.getElementById("sr-pos");
+    const scoreEl = document.getElementById("sr-score");
+    if (posEl)   posEl.textContent   = `P${data.final_pos}`;
+    if (scoreEl) scoreEl.textContent = data.final_score.toFixed(3);
+    // Dimension chips
+    if (dimsEl && data.dims) {
+      dimsEl.innerHTML = "";
+      const labels = {
+        race_result: "Race result", strategic_decisions: "Strategy",
+        tyre_management: "Tyres", fuel_management: "Fuel",
+        comms_quality: "Comms", operational_efficiency: "Ops",
+      };
+      Object.entries(data.dims).forEach(([k, v]) => {
+        const chip = document.createElement("div");
+        chip.className = "dim-chip";
+        chip.innerHTML = `<span>${labels[k] || k}</span><span class="dim-chip-val">${v.toFixed(2)}</span>`;
+        dimsEl.appendChild(chip);
+      });
+    }
+    resultEl.classList.remove("hidden");
+  }
+
+  // Main: run the simulation
+  if (runBtn) {
+    runBtn.addEventListener("click", async () => {
+      const task = scenarioSel.value;
+      const seed = parseInt(seedSel.value, 10);
+
+      // Reset UI
+      runBtn.disabled = true;
+      runBtn.textContent = "Running…";
+      output.classList.remove("hidden");
+      resultEl.classList.add("hidden");
+      logEl.innerHTML = "";
+      if (dimsEl) dimsEl.innerHTML = "";
+      setScore(0);
+
+      const scLabel = scenarioSel.options[scenarioSel.selectedIndex].text.split("—")[0].trim();
+      if (scenLabel) scenLabel.textContent = scLabel.toUpperCase();
+      if (statusEl) {
+        statusEl.textContent = "running…";
+        statusEl.className = "sim-out-status running";
+      }
+
+      let data;
+      try {
+        const resp = await fetch("/simulate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ task, seed }),
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        data = await resp.json();
+      } catch (err) {
+        if (statusEl) {
+          statusEl.textContent = `Error: ${err.message}`;
+          statusEl.className = "sim-out-status";
+        }
+        runBtn.disabled = false;
+        runBtn.textContent = "▶ RUN RACE";
+        return;
+      }
+
+      // Animate through laps
+      const laps = data.laps;
+      const LAP_DELAY = 320; // ms per lap
+      for (let i = 0; i < laps.length; i++) {
+        const lap = laps[i];
+        setTelem(lap.lap, lap.total_laps, lap.position, lap.compound, lap.health, lap.fuel, lap.weather);
+        appendLap(lap);
+        if (i === laps.length - 1) setScore(data.final_score);
+        await sleep(LAP_DELAY);
+      }
+
+      // Done
+      if (statusEl) {
+        statusEl.textContent = `done — P${data.final_pos} · score ${data.final_score.toFixed(3)}`;
+        statusEl.className = "sim-out-status done";
+      }
+      showResult(data);
+      runBtn.disabled = false;
+      runBtn.textContent = "▶ RUN RACE";
     });
   }
 }

@@ -326,62 +326,90 @@
   </div>
 </section>
 
-<!-- ═══════════ SECTION 6 — API / TRY IT ═══════════ -->
+<!-- ═══════════ SECTION 6 — LIVE SIMULATION ═══════════ -->
 <section id="api" class="screen screen-dark">
   <div class="section-inner">
-    <p class="section-label">API</p>
-    <h2 class="section-title">Try the simulator yourself</h2>
-    <p class="section-sub">Pick a scenario and seed below to generate the exact command. The live HF Space exposes the full OpenEnv API — any agent can step through a race episode with three HTTP calls.</p>
+    <p class="section-label">TRY IT LIVE</p>
+    <h2 class="section-title">Run a race simulation in your browser</h2>
+    <p class="section-sub">Select a scenario and seed, then hit Run Race. The environment executes a full episode on the server with the heuristic policy and streams the lap-by-lap result back here — no command line needed.</p>
 
-    <!-- Interactive scenario picker -->
+    <!-- ── Scenario picker + RUN button ── -->
     <div class="sim-widget" data-reveal>
-      <div class="sim-widget-label">INTERACTIVE SCENARIO LAUNCHER</div>
+      <div class="sim-widget-label">LIVE RACE SIMULATOR — heuristic policy</div>
       <div class="sim-controls">
         <div class="sim-field">
           <label class="sim-field-label" for="sim-scenario">SCENARIO</label>
           <select id="sim-scenario">
-            <option value="weather_roulette">Weather Roulette (Spa · rain transition)</option>
-            <option value="dry_strategy_sprint">Dry Strategy Sprint (Monza · undercut timing)</option>
-            <option value="late_safety_car">Late Safety Car (Monaco · SC pit window)</option>
-            <option value="championship_decider">Championship Decider (Catalunya · rival coverage)</option>
-            <option value="virtual_safety_car_window">VSC Window (Zandvoort · VSC delta)</option>
-            <option value="tyre_cliff_management">Tyre Cliff (Silverstone · degradation cliff)</option>
+            <option value="weather_roulette">Weather Roulette — Spa (rain transition)</option>
+            <option value="dry_strategy_sprint">Dry Sprint — Monza (undercut timing)</option>
+            <option value="late_safety_car">Late Safety Car — Monaco (SC pit window)</option>
+            <option value="championship_decider">Championship Decider — Catalunya</option>
+            <option value="virtual_safety_car_window">VSC Window — Zandvoort</option>
+            <option value="tyre_cliff_management">Tyre Cliff — Silverstone</option>
           </select>
         </div>
         <div class="sim-field">
           <label class="sim-field-label" for="sim-seed">SEED</label>
           <select id="sim-seed">
             <option value="7">7 — recommended demo</option>
-            <option value="0">0 — baseline</option>
+            <option value="0">0</option>
             <option value="1">1</option>
-            <option value="2">2</option>
             <option value="42">42</option>
             <option value="99">99</option>
           </select>
         </div>
-        <div class="sim-field">
-          <label class="sim-field-label" for="sim-model">MODEL</label>
-          <select id="sim-model">
-            <option value="heuristic">heuristic (fast, no GPU)</option>
-            <option value="Qwen/Qwen3-0.6B">Qwen3-0.6B (small LLM)</option>
-            <option value="./grpo_v1">grpo_v1 (trained checkpoint)</option>
-          </select>
+        <button id="sim-run-btn" class="sim-run-btn">▶ RUN RACE</button>
+      </div>
+
+      <!-- Race output panel -->
+      <div id="sim-output" class="sim-output hidden">
+        <div class="sim-output-header">
+          <span id="sim-scenario-label" class="sim-out-scenario">WEATHER ROULETTE · SPA</span>
+          <span id="sim-status" class="sim-out-status">running…</span>
         </div>
-        <a id="sim-launch" class="sim-launch-btn" href="/web" target="_blank" rel="noreferrer">▶ Open Playground</a>
+
+        <!-- Live telemetry bar -->
+        <div class="sim-telem" id="sim-telem">
+          <div class="telem-item"><span class="telem-k">LAP</span><span class="telem-v" id="telem-lap">—</span></div>
+          <div class="telem-item"><span class="telem-k">POS</span><span class="telem-v" id="telem-pos">—</span></div>
+          <div class="telem-item"><span class="telem-k">TYRE</span><span class="telem-v" id="telem-tyre">—</span></div>
+          <div class="telem-item telem-health">
+            <span class="telem-k">HEALTH</span>
+            <div class="health-bar-wrap"><div class="health-bar" id="health-bar"></div></div>
+            <span class="telem-v" id="telem-health">—</span>
+          </div>
+          <div class="telem-item"><span class="telem-k">FUEL</span><span class="telem-v" id="telem-fuel">—</span></div>
+          <div class="telem-item"><span class="telem-k">WX</span><span class="telem-v" id="telem-wx">—</span></div>
+          <div class="telem-item"><span class="telem-k">SCORE</span><span class="telem-v red" id="telem-score">—</span></div>
+        </div>
+
+        <!-- Lap log -->
+        <div class="sim-log-wrap">
+          <div class="sim-log-label">DECISION LOG</div>
+          <ol id="sim-log" class="sim-log"></ol>
+        </div>
+
+        <!-- Final result (shown after race) -->
+        <div id="sim-result" class="sim-result hidden">
+          <div class="sim-result-row">
+            <div class="sim-result-item"><span class="sr-k">FINAL POSITION</span><span class="sr-v" id="sr-pos">—</span></div>
+            <div class="sim-result-item"><span class="sr-k">SCORE</span><span class="sr-v red" id="sr-score">—</span></div>
+          </div>
+          <div class="sim-dims" id="sim-dims"></div>
+        </div>
       </div>
-      <div class="sim-cmd-wrap">
-        <div class="sim-cmd-label">LOCAL COMMAND</div>
-        <pre id="sim-cmd" class="sim-cmd-pre">python inference.py --task weather_roulette --seed 7 --verbose</pre>
-        <button class="sim-copy-btn" id="sim-copy" title="Copy command">copy</button>
-      </div>
-      <div class="sim-api-wrap">
-        <div class="sim-cmd-label">HTTP (curl)</div>
-        <pre id="sim-api" class="sim-cmd-pre">curl -X POST https://deltasthic-f1-strategist.hf.space/reset \
-  -H "Content-Type: application/json" \
-  -d '{"task":"weather_roulette","seed":7}'</pre>
+
+      <div class="sim-footer-row">
+        <a href="/web" target="_blank" rel="noreferrer" class="sim-playground-link">Open full interactive Gradio playground →</a>
+        <div class="sim-cmd-mini">
+          <span class="sim-cmd-mini-label">or run locally:</span>
+          <pre id="sim-cmd" class="sim-cmd-inline">python inference.py --task weather_roulette --seed 7</pre>
+          <button class="sim-copy-btn" id="sim-copy">copy</button>
+        </div>
       </div>
     </div>
 
+    <!-- ── API reference ── -->
     <div class="try-grid">
       <div class="try-card" data-reveal>
         <div class="try-card-label">Python (openenv client)</div>
@@ -393,45 +421,43 @@
     <span class="k">while not</span> obs.done:
         action = my_agent(obs)
         obs = <span class="k">await</span> env.step(F1Action(message=action))
-    <span class="k">print</span>(obs.score)  <span class="c"># 0.0 – 1.0</span></pre>
+    <span class="k">print</span>(obs.score)</pre>
       </div>
 
       <div class="try-card" data-reveal>
-        <div class="try-card-label">Available actions (20 commands)</div>
-        <pre class="code-block"><span class="c"># Investigation (reveal hidden state)</span>
+        <div class="try-card-label">Available actions (21 commands)</div>
+        <pre class="code-block"><span class="c"># Investigation</span>
 INSPECT_TYRE_DEGRADATION
 CHECK_OPPONENT_STRATEGY &lt;num&gt;
 REQUEST_FORECAST
 ASSESS_UNDERCUT_WINDOW
 INSPECT_FUEL_MARGIN
 
-<span class="c"># Strategic decisions</span>
-PIT_NOW &lt;compound&gt;  <span class="c"># soft|medium|hard|inter|wet</span>
-SET_MODE &lt;mode&gt;     <span class="c"># push|conserve|race|defend</span>
-RADIO_DRIVER &lt;msg&gt;
-DEFEND_POSITION
-HOLD_GAP
-DONE</pre>
+<span class="c"># Strategy</span>
+PIT_NOW &lt;soft|medium|hard|inter|wet&gt;
+SET_MODE &lt;push|conserve|race|defend&gt;
+RADIO_DRIVER &lt;"message"&gt;
+DEFEND_POSITION · HOLD_GAP · DONE</pre>
       </div>
 
       <div class="try-card" data-reveal>
-        <div class="try-card-label">Observation schema (each step)</div>
-        <pre class="code-block"><span class="c"># What the agent sees per lap</span>
-{
-  <span class="s">"lap"</span>: 7,
-  <span class="s">"total_laps"</span>: 12,
-  <span class="s">"position"</span>: 3,
-  <span class="s">"tyre_compound"</span>: <span class="s">"medium"</span>,
-  <span class="s">"tyre_age"</span>: 6,       <span class="c"># laps on current set</span>
-  <span class="s">"fuel_load"</span>: 0.42,   <span class="c"># 0–1</span>
-  <span class="s">"weather"</span>: <span class="s">"light_rain"</span>,
-  <span class="s">"message"</span>: <span class="s">"&lt;system prompt + history&gt;"</span>
-}</pre>
+        <div class="try-card-label">HTTP API (curl)</div>
+        <pre class="code-block"><span class="c"># 1. Reset</span>
+curl -X POST .../reset \
+  -d <span class="s">'{"task":"weather_roulette","seed":7}'</span>
+
+<span class="c"># 2. Step</span>
+curl -X POST .../step \
+  -d <span class="s">'{"action":"PIT_NOW inter"}'</span>
+
+<span class="c"># 3. Run full episode (returns trajectory)</span>
+curl -X POST .../simulate \
+  -d <span class="s">'{"task":"weather_roulette","seed":7}'</span></pre>
       </div>
     </div>
 
     <div class="links-row" data-reveal>
-      <a class="link-btn" href="/web" target="_blank" rel="noreferrer">▶ Live Playground</a>
+      <a class="link-btn" href="/web" target="_blank" rel="noreferrer">▶ Gradio Playground</a>
       <a class="link-btn link-btn--ghost" href="https://github.com/Deltasthicc/F1_Simulator_OpenENV" target="_blank" rel="noreferrer">⎋ GitHub</a>
       <a class="link-btn link-btn--ghost" href="/health" target="_blank" rel="noreferrer">⚡ API Health</a>
       <a class="link-btn link-btn--ghost" href="https://colab.research.google.com/github/Deltasthicc/F1_Simulator_OpenENV/blob/main/notebooks/f1_strategist_training_colab.ipynb" target="_blank" rel="noreferrer">📓 Colab</a>

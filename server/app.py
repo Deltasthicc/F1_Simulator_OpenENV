@@ -83,70 +83,136 @@ if _STATIC_DIR.exists():
 class SimulateRequest(BaseModel):
     task: str = "weather_roulette"
     seed: int = 7
+    model: str = "heuristic"  # "heuristic" | "random"
+
+
+# Minimal valid action pool for the random policy
+_RANDOM_ACTIONS = [
+    "STAY_OUT", "INSPECT_TYRE_DEGRADATION", "REQUEST_FORECAST",
+    "ASSESS_UNDERCUT_WINDOW", "INSPECT_FUEL_MARGIN",
+    "PIT_NOW soft", "PIT_NOW medium", "PIT_NOW hard",
+    "SET_MODE push", "SET_MODE conserve", "SET_MODE race",
+    "DEFEND_POSITION", "HOLD_GAP 1",
+]
+
+_DIM_KEYS = [
+    "race_result", "strategic_decisions", "tyre_management",
+    "fuel_management", "comms_quality", "operational_efficiency",
+]
+
+
+def _surface_label(weather_dict: dict) -> str:
+    """Convert the WeatherState dict to a readable label."""
+    rain = weather_dict.get("rain_intensity", 0.0) if weather_dict else 0.0
+    surface = weather_dict.get("surface_state", "dry") if weather_dict else "dry"
+    if rain > 0.5 or surface == "wet":
+        return "heavy rain"
+    if rain > 0.15 or surface == "damp":
+        return "light rain"
+    return "dry"
 
 
 @app.post("/simulate", include_in_schema=True)
 def simulate_episode(req: SimulateRequest) -> dict[str, Any]:
-    """Run one episode with the heuristic policy and return the full trajectory."""
-    from inference import _heuristic_generator, format_obs, parse_action, SYSTEM_PROMPT
+    """Run one episode with the chosen policy and return the full lap-by-lap trajectory."""
+    import random as _random
+    import traceback
 
-    env = F1StrategistEnvironment()
-    obs = env.reset(task=req.task, seed=req.seed)
-    history: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
-    laps: list[dict] = []
+    try:
+        policy_name = req.model.lower().strip()
+        env = F1StrategistEnvironment()
+        obs = env.reset(task=req.task, seed=req.seed)
 
-    while not obs.done:
-        prompt = format_obs(obs)
-        history.append({"role": "user", "content": prompt})
-        action_str = _heuristic_generator(history, obs, req.task)
-        action = parse_action(action_str)
-        history.append({"role": "assistant", "content": action.command})
+        # Lazy-import heuristic only when needed (avoids import errors for random mode)
+        heuristic_fn = None
+        parse_fn = None
+        SYSTEM_PROMPT_TEXT = ""
+        if policy_name not in ("random",):
+            try:
+                import sys, pathlib
+                # Ensure project root is on sys.path when running inside server/
+                _root = str(pathlib.Path(__file__).parent.parent)
+                if _root not in sys.path:
+                    sys.path.insert(0, _root)
+                from inference import _heuristic_generator as _h, parse_action as _p, SYSTEM_PROMPT as _sp
+                heuristic_fn = _h
+                parse_fn = _p
+                SYSTEM_PROMPT_TEXT = _sp
+            except Exception:
+                # Fall back to random if inference import fails
+                policy_name = "random"
 
-        rain = (obs.weather_current or {}).get("rain_intensity", 0.0)
-        key = action.command.upper().startswith(("PIT_NOW", "RADIO_DRIVER", "REQUEST_FORECAST", "DONE"))
+        history: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT_TEXT}]
+        laps: list[dict] = []
+        safety_limit = max(obs.total_laps + 5, 60)
+
+        for _ in range(safety_limit):
+            if obs.done:
+                break
+
+            # Choose action
+            if policy_name == "random":
+                action_str = _random.choice(_RANDOM_ACTIONS)
+                if obs.current_lap >= obs.total_laps:
+                    action_str = "DONE"
+            else:
+                # Heuristic / grpo (heuristic used as stand-in when checkpoint unavailable)
+                history.append({"role": "user", "content": str(obs.message)})
+                raw = heuristic_fn(history, obs, req.task)
+                action_str = parse_fn(raw).command
+                history.append({"role": "assistant", "content": action_str})
+
+            action = F1Action(command=action_str)
+            rain = (obs.weather_current or {}).get("rain_intensity", 0.0)
+            key_decision = action_str.upper().startswith(
+                ("PIT_NOW", "RADIO_DRIVER", "REQUEST_FORECAST", "DONE",
+                 "ASSESS_UNDERCUT_WINDOW", "CHECK_OPPONENT")
+            )
+            laps.append({
+                "lap":        obs.current_lap,
+                "action":     action_str,
+                "position":   int(obs.ego_position),
+                "compound":   obs.ego_tyre_compound,
+                "health":     round(float(obs.ego_tyre_health_pct), 1),
+                "fuel":       round(float(obs.ego_fuel_remaining_kg), 2),
+                "weather":    _surface_label(obs.weather_current),
+                "rain":       round(float(rain), 2),
+                "total_laps": int(obs.total_laps),
+                "key":        key_decision,
+            })
+            obs = env.step(action)
+
+        # Add terminal record
         laps.append({
-            "lap":        obs.current_lap,
-            "action":     action.command,
-            "position":   obs.ego_position,
+            "lap":        int(obs.current_lap),
+            "action":     "DONE",
+            "position":   int(obs.ego_position),
             "compound":   obs.ego_tyre_compound,
-            "health":     round(obs.ego_tyre_health_pct, 1),
-            "fuel":       round(obs.ego_fuel_remaining_kg, 2),
-            "weather":    obs.weather_current.get("condition", "dry") if obs.weather_current else "dry",
-            "rain":       round(rain, 2),
-            "total_laps": obs.total_laps,
-            "key":        key,
+            "health":     round(float(obs.ego_tyre_health_pct), 1),
+            "fuel":       round(float(obs.ego_fuel_remaining_kg), 2),
+            "weather":    _surface_label(obs.weather_current),
+            "rain":       round(float((obs.weather_current or {}).get("rain_intensity", 0.0)), 2),
+            "total_laps": int(obs.total_laps),
+            "key":        True,
         })
-        obs = env.step(action)
 
-    # Final lap record
-    rain = (obs.weather_current or {}).get("rain_intensity", 0.0)
-    laps.append({
-        "lap":        obs.current_lap,
-        "action":     "DONE",
-        "position":   obs.ego_position,
-        "compound":   obs.ego_tyre_compound,
-        "health":     round(obs.ego_tyre_health_pct, 1),
-        "fuel":       round(obs.ego_fuel_remaining_kg, 2),
-        "weather":    obs.weather_current.get("condition", "dry") if obs.weather_current else "dry",
-        "rain":       round(rain, 2),
-        "total_laps": obs.total_laps,
-        "key":        True,
-    })
+        mos = obs.multi_objective_scores or {}
+        score = float(mos.get("weighted_final", obs.score or 0.0))
+        dims  = {k: round(float(mos.get(k, 0.0)), 3) for k in _DIM_KEYS}
 
-    score = float(obs.multi_objective_scores.get("weighted_final", obs.score or 0))
-    dims  = {k: float(obs.multi_objective_scores.get(k, 0.0)) for k in
-             ["race_result", "strategic_decisions", "tyre_management",
-              "fuel_management", "comms_quality", "operational_efficiency"]}
+        return {
+            "task":        req.task,
+            "seed":        req.seed,
+            "laps":        laps,
+            "final_score": round(score, 4),
+            "final_pos":   int(obs.ego_position),
+            "dims":        dims,
+            "policy":      policy_name,
+        }
 
-    return {
-        "task":        req.task,
-        "seed":        req.seed,
-        "laps":        laps,
-        "final_score": round(score, 4),
-        "final_pos":   obs.ego_position,
-        "dims":        dims,
-        "policy":      "heuristic",
-    }
+    except Exception as exc:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=f"{type(exc).__name__}: {exc}\n{traceback.format_exc()}")
 
 
 # ---------------------------------------------------------------------------

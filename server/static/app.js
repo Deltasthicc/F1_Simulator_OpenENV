@@ -651,6 +651,7 @@ const WEATHER_LABELS  = { dry: "DRY", light_rain: "LIGHT RAIN", rain: "RAIN", he
 function setupSimWidget() {
   const scenarioSel = document.getElementById("sim-scenario");
   const seedSel     = document.getElementById("sim-seed");
+  const modelSel    = document.getElementById("sim-model");
   const runBtn      = document.getElementById("sim-run-btn");
   const cmdPre      = document.getElementById("sim-cmd");
   const copyBtn     = document.getElementById("sim-copy");
@@ -664,12 +665,15 @@ function setupSimWidget() {
   if (!scenarioSel) return;
 
   function updateCmd() {
-    const task = scenarioSel.value;
-    const seed = seedSel.value;
-    if (cmdPre) cmdPre.textContent = `python inference.py --task ${task} --seed ${seed}`;
+    const task  = scenarioSel.value;
+    const seed  = seedSel.value;
+    const model = modelSel ? modelSel.value : "heuristic";
+    const modelFlag = model === "heuristic" ? "" : ` --model ${model}`;
+    if (cmdPre) cmdPre.textContent = `python inference.py --task ${task} --seed ${seed}${modelFlag}`;
   }
   scenarioSel.addEventListener("change", updateCmd);
   seedSel.addEventListener("change", updateCmd);
+  if (modelSel) modelSel.addEventListener("change", updateCmd);
   updateCmd();
 
   // Copy local command
@@ -770,24 +774,32 @@ function setupSimWidget() {
       setScore(0);
 
       const scLabel = scenarioSel.options[scenarioSel.selectedIndex].text.split("—")[0].trim();
-      if (scenLabel) scenLabel.textContent = scLabel.toUpperCase();
+      const mLabel  = modelSel ? ` · ${modelSel.options[modelSel.selectedIndex].text.split("(")[0].trim().toUpperCase()}` : "";
+      if (scenLabel) scenLabel.textContent = scLabel.toUpperCase() + mLabel;
       if (statusEl) {
         statusEl.textContent = "running…";
         statusEl.className = "sim-out-status running";
       }
+
+      const model = modelSel ? modelSel.value : "heuristic";
 
       let data;
       try {
         const resp = await fetch("/simulate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ task, seed }),
+          body: JSON.stringify({ task, seed, model }),
         });
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        if (!resp.ok) {
+          let detail = `HTTP ${resp.status}`;
+          try { const j = await resp.json(); detail = j.detail || detail; } catch (_) {}
+          throw new Error(detail);
+        }
         data = await resp.json();
       } catch (err) {
+        const short = String(err.message).split("\n")[0].slice(0, 120);
         if (statusEl) {
-          statusEl.textContent = `Error: ${err.message}`;
+          statusEl.textContent = `Error: ${short}`;
           statusEl.className = "sim-out-status";
         }
         runBtn.disabled = false;

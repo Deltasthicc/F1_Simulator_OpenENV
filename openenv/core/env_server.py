@@ -50,6 +50,16 @@ def _dump(obj: Any) -> Any:
     return obj
 
 
+def create_app(
+    env_factory: Callable[[], Environment],
+    action_model: type[Action],
+    observation_model: type[Observation] | None = None,
+    **kwargs: Any,
+) -> "FastAPI":
+    """Alias kept for server/app.py compatibility."""
+    return create_fastapi_app(env_factory, action_model, observation_model)
+
+
 def create_fastapi_app(
     env_factory: Callable[[], Environment],
     action_model: type[Action],

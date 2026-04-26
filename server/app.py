@@ -83,7 +83,7 @@ if _STATIC_DIR.exists():
 class SimulateRequest(BaseModel):
     task: str = "weather_roulette"
     seed: int = 7
-    model: str = "heuristic"  # "heuristic" | "random" | "grpo_v1" | "qwen3"
+    model: str = "heuristic"  # "heuristic" | "random" | "grpo_v2" | "qwen3" (legacy: "grpo_v2" alias for grpo_v2)
 
 
 @app.post("/simulate", include_in_schema=True)
@@ -107,13 +107,14 @@ def simulate_episode(req: SimulateRequest) -> dict[str, Any]:
         obs = env.reset(task=req.task, seed=req.seed)
         family = get_scenario_family(req.task)
 
-        # ── Build LLM generator for grpo_v1 / qwen3 ──────────────────────
+        # ── Build LLM generator for grpo_v2 / qwen3 ──────────────────────
         llm_gen = None  # if None, we use the rule-based heuristic
 
-        if policy_name in ("grpo_v1", "grpo"):
-            # grpo_v1 is a LoRA adapter on Qwen3-4B (~8 GB base model).
+        if policy_name in ("grpo_v2", "grpo_v1", "grpo"):
+            # grpo_v2 is the SFT+GRPO LoRA adapter on Qwen3-4B (~8 GB base model).
             # On the free CPU tier (16 GB RAM), loading it would take 10–30 min
             # and likely OOM. Detect available RAM upfront and fail fast.
+            policy_label = "GRPO v2"
             try:
                 import psutil
                 free_gb = psutil.virtual_memory().available / 1024**3
@@ -121,14 +122,20 @@ def simulate_episode(req: SimulateRequest) -> dict[str, Any]:
                 free_gb = 0.0
             if free_gb < 10.0:
                 policy_note = (
-                    f"GRPO v1 needs ~10 GB free RAM to load Qwen3-4B + LoRA "
+                    f"{policy_label} needs ~10 GB free RAM to load Qwen3-4B + LoRA "
                     f"(only {free_gb:.1f} GB available on this CPU Space). "
                     "Score shown uses the expert heuristic for reference. "
-                    "Run grpo_v1 locally with a GPU for real inference."
+                    "Run locally with a GPU for real inference, or pull from "
+                    "huggingface.co/Deltasthic/f1-strategist-qwen3-4b-grpo."
                 )
-                policy_name = "grpo_v1 (heuristic reference)"
+                policy_name = f"{policy_label} (heuristic reference)"
             else:
-                checkpoint = _Path("/app/grpo_v1")
+                # Try grpo_v2/ first (our champion), fall back to grpo_v1/
+                checkpoint = _Path("/app/grpo_v2")
+                if not checkpoint.exists():
+                    checkpoint = _Path(__file__).parent.parent / "grpo_v2"
+                if not checkpoint.exists():
+                    checkpoint = _Path("/app/grpo_v1")
                 if not checkpoint.exists():
                     checkpoint = _Path(__file__).parent.parent / "grpo_v1"
                 if checkpoint.exists():
@@ -158,17 +165,17 @@ def simulate_episode(req: SimulateRequest) -> dict[str, Any]:
                                 out = _lm.generate(**inp, max_new_tokens=64, do_sample=False)
                             return _tok.decode(out[0][inp["input_ids"].shape[-1]:], skip_special_tokens=True)
 
-                        policy_name = "grpo_v1"
-                        policy_note = "Loaded grpo_v1 (Qwen3-4B + LoRA). Running CPU inference."
+                        policy_name = "grpo_v2"
+                        policy_note = "Loaded grpo_v2 (Qwen3-4B + LoRA). Running CPU inference."
                     except MemoryError:
-                        policy_note = "grpo_v1: OOM loading Qwen3-4B. Score shown uses heuristic reference."
-                        policy_name = "grpo_v1 (heuristic reference)"
+                        policy_note = "grpo_v2: OOM loading Qwen3-4B. Score shown uses heuristic reference."
+                        policy_name = "grpo_v2 (heuristic reference)"
                     except Exception as _e:
-                        policy_note = f"grpo_v1 load error ({type(_e).__name__}: {str(_e)[:120]}). Score shown uses heuristic reference."
-                        policy_name = "grpo_v1 (heuristic reference)"
+                        policy_note = f"grpo_v2 load error ({type(_e).__name__}: {str(_e)[:120]}). Score shown uses heuristic reference."
+                        policy_name = "grpo_v2 (heuristic reference)"
                 else:
-                    policy_note = "grpo_v1 adapter not found on this server."
-                    policy_name = "grpo_v1 (heuristic reference)"
+                    policy_note = "grpo_v2 adapter not found on this server."
+                    policy_name = "grpo_v2 (heuristic reference)"
 
         elif policy_name in ("qwen3", "qwen3-0.6b", "llm"):
             # Qwen3-0.6B is pre-cached in the Docker image — loads in seconds.

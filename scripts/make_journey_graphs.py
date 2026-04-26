@@ -78,29 +78,51 @@ iterations = [
 labels = [name for name, _ in iterations]
 avgs = [_avg(scores) for _, scores in iterations]
 
+# F1 palette (matches server/static/style.css)
+F1_BG    = "#0a0a0a"
+F1_PANEL = "#0f0f0f"
+F1_INK   = "#e8e8e8"
+F1_DIM   = "#666666"
+F1_RULE  = "#1e1e1e"
+F1_RED   = "#e10600"
+F1_TEAL  = "#00d2be"
+F1_GOLD  = "#ffd60a"
+F1_ORANGE = "#ef8a17"
+
+def _style_axes(ax, fig):
+    ax.set_facecolor(F1_PANEL)
+    fig.patch.set_facecolor(F1_BG)
+    ax.tick_params(colors=F1_DIM, labelsize=9)
+    for spine in ax.spines.values():
+        spine.set_color(F1_RULE)
+    ax.grid(True, axis="y", linestyle="--", alpha=0.18, color="#444")
+
 fig, ax = plt.subplots(figsize=(11, 5.5))
-colors = ["#888888", "#5B7DA8", "#D67A1F", "#7BAFD4", "#9CC68F", "#C7423F", "#2A6F2A"]
+# Color per stage: dim → orange (untrained) → orange (initial) → teal (SFT) → teal (RFT) → red (winner) → gold (expert)
+colors = [F1_DIM, F1_ORANGE, F1_ORANGE, F1_TEAL, F1_TEAL, F1_RED, F1_GOLD]
 xs = list(range(len(labels)))
-ax.plot(xs, avgs, marker="o", linewidth=2.5, color="#333333", zorder=2)
+ax.plot(xs, avgs, marker="o", linewidth=2.5, color="#777", zorder=2, alpha=0.6)
 for i, (x, y, c) in enumerate(zip(xs, avgs, colors)):
-    ax.scatter([x], [y], s=240, color=c, edgecolor="black", linewidth=1.4, zorder=3)
+    s = 320 if i == 5 else 220
+    ax.scatter([x], [y], s=s, color=c, edgecolor=F1_BG, linewidth=1.6, zorder=3)
     label = f"{y:.3f}"
-    offset = 12 if i != 5 else -22  # push GRPO v2 label below line for emphasis
+    offset = 14 if i != 5 else -24  # push GRPO v2 label below line for emphasis
     ax.annotate(label, (x, y), textcoords="offset points",
-                xytext=(0, offset), ha="center", fontsize=10, fontweight="bold")
+                xytext=(0, offset), ha="center", fontsize=10, fontweight="bold",
+                color=c if i == 5 else F1_INK)
 
 ax.set_xticks(xs)
-ax.set_xticklabels(labels, fontsize=9)
-ax.set_ylabel("Average weighted_final score (4 scenarios × 5 seeds)", fontsize=10)
-ax.set_title("F1 Strategist — training journey: random → expert\n(★ = our shipping checkpoint)",
-             fontsize=12, fontweight="bold")
+ax.set_xticklabels(labels, fontsize=9, color=F1_INK)
+ax.set_ylabel("Average weighted_final  (4–6 scenarios × 5 seeds)", fontsize=10, color=F1_DIM)
+ax.set_title("F1 Strategist — training journey: random → expert    ★ = shipping checkpoint",
+             fontsize=12, color=F1_INK, pad=12)
 ax.set_ylim(0.2, 1.0)
-ax.grid(True, axis="y", linestyle="--", alpha=0.4)
-ax.axhline(y=avgs[-1], linestyle=":", color="#2A6F2A", alpha=0.5, label="expert ceiling")
-ax.axhline(y=avgs[1], linestyle=":", color="#5B7DA8", alpha=0.5, label="untrained baseline")
-ax.legend(loc="lower right", fontsize=9)
+ax.axhline(y=avgs[-1], linestyle=":", color=F1_GOLD, alpha=0.5, label="expert ceiling")
+ax.axhline(y=avgs[1], linestyle=":", color=F1_ORANGE, alpha=0.5, label="untrained baseline")
+leg = ax.legend(loc="lower right", fontsize=9, frameon=False, labelcolor=F1_INK)
+_style_axes(ax, fig)
 plt.tight_layout()
-plt.savefig(RESULTS / "journey.png", dpi=140, bbox_inches="tight")
+plt.savefig(RESULTS / "journey.png", dpi=140, facecolor=F1_BG, bbox_inches="tight")
 plt.close(fig)
 print(f"Wrote {RESULTS / 'journey.png'}")
 
@@ -123,29 +145,29 @@ fig, ax = plt.subplots(figsize=(13, 5.5))
 n_groups = len(groups)
 bar_w = 0.11
 xs = np.arange(len(TASKS))
-group_colors = ["#888888", "#5B7DA8", "#D67A1F", "#7BAFD4", "#9CC68F", "#C7423F", "#2A6F2A"]
+group_colors = [F1_DIM, F1_ORANGE, "#a36322", F1_TEAL, "#0a8d80", F1_RED, F1_GOLD]
 
 for i, ((name, scores), color) in enumerate(zip(groups.items(), group_colors)):
     offset = (i - (n_groups - 1) / 2) * bar_w
     plot_scores = [0.0 if (isinstance(s, float) and math.isnan(s)) else s for s in scores]
     bars = ax.bar(xs + offset, plot_scores, bar_w, label=name, color=color,
-                  edgecolor="black", linewidth=0.6)
+                  edgecolor=F1_BG, linewidth=0.6)
     if name == "GRPO v2 ★":  # annotate champion
         for x, s in zip(xs + offset, plot_scores):
             if s > 0:
                 ax.text(x, s + 0.018, f"{s:.2f}", ha="center", fontsize=8, fontweight="bold",
-                        color="#C7423F")
+                        color=F1_RED)
 
 ax.set_xticks(xs)
-ax.set_xticklabels(TASK_LABELS, fontsize=10)
-ax.set_ylabel("weighted_final score", fontsize=10)
+ax.set_xticklabels(TASK_LABELS, fontsize=10, color=F1_INK)
+ax.set_ylabel("weighted_final score", fontsize=10, color=F1_DIM)
 ax.set_title("Per-scenario performance across the journey",
-             fontsize=12, fontweight="bold")
+             fontsize=12, color=F1_INK, pad=12)
 ax.set_ylim(0, 1.05)
-ax.grid(True, axis="y", linestyle="--", alpha=0.4)
-ax.legend(loc="upper right", ncol=2, fontsize=9)
+leg = ax.legend(loc="upper right", ncol=2, fontsize=9, frameon=False, labelcolor=F1_INK)
+_style_axes(ax, fig)
 plt.tight_layout()
-plt.savefig(RESULTS / "scenario_breakdown.png", dpi=140, bbox_inches="tight")
+plt.savefig(RESULTS / "scenario_breakdown.png", dpi=140, facecolor=F1_BG, bbox_inches="tight")
 plt.close(fig)
 print(f"Wrote {RESULTS / 'scenario_breakdown.png'}")
 
@@ -160,7 +182,7 @@ groups2 = {
     "OURS\n(GRPO v2)": GRPO_V2,
     "expert ceiling": EXPERT,
 }
-colors2 = ["#D67A1F", "#888888", "#C7423F", "#2A6F2A"]
+colors2 = [F1_ORANGE, F1_DIM, F1_RED, F1_GOLD]
 
 fig, ax = plt.subplots(figsize=(11, 5.5))
 n = len(groups2)
@@ -168,31 +190,33 @@ bar_w = 0.18
 xs = np.arange(len(TASKS))
 for i, ((name, scores), color) in enumerate(zip(groups2.items(), colors2)):
     offset = (i - (n - 1) / 2) * bar_w
-    bars = ax.bar(xs + offset, scores, bar_w, label=name, color=color,
-                  edgecolor="black", linewidth=0.6)
-    for x, s in zip(xs + offset, scores):
-        ax.text(x, s + 0.012, f"{s:.2f}", ha="center", fontsize=8)
+    plot_scores = [0.0 if (isinstance(s, float) and math.isnan(s)) else s for s in scores]
+    bars = ax.bar(xs + offset, plot_scores, bar_w, label=name, color=color,
+                  edgecolor=F1_BG, linewidth=0.6)
+    for x, s in zip(xs + offset, plot_scores):
+        if s > 0:
+            ax.text(x, s + 0.012, f"{s:.2f}", ha="center", fontsize=8, color=F1_INK)
 
 # Note about main's reported numbers
 ax.text(
     0.02, 0.98,
-    "main's 'reported' numbers came from a hand-coded scripted-policy\n"
-    "fallback (LoRA dirs lack config.json → silent fall-through). Verified\n"
+    "the originally reported numbers came from a hand-coded scripted-policy\n"
+    "fallback (LoRA dirs lack config.json → silent fall-through). verified\n"
     "bit-exact by running the scripted policy with no model loaded.",
-    transform=ax.transAxes, fontsize=8.5, va="top",
-    bbox=dict(boxstyle="round,pad=0.4", fc="#FFF7E0", ec="#888888"),
+    transform=ax.transAxes, fontsize=8.5, va="top", color=F1_INK,
+    bbox=dict(boxstyle="round,pad=0.5", fc=F1_RULE, ec=F1_DIM),
 )
 
 ax.set_xticks(xs)
-ax.set_xticklabels(TASK_LABELS, fontsize=10)
-ax.set_ylabel("weighted_final score", fontsize=10)
-ax.set_title("Reality check: what main reported vs what the model actually does",
-             fontsize=12, fontweight="bold")
+ax.set_xticklabels(TASK_LABELS, fontsize=10, color=F1_INK)
+ax.set_ylabel("weighted_final score", fontsize=10, color=F1_DIM)
+ax.set_title("Reality check: reported vs actual LLM behaviour",
+             fontsize=12, color=F1_INK, pad=12)
 ax.set_ylim(0, 1.05)
-ax.grid(True, axis="y", linestyle="--", alpha=0.4)
-ax.legend(loc="lower right", fontsize=9)
+leg = ax.legend(loc="lower right", fontsize=9, frameon=False, labelcolor=F1_INK)
+_style_axes(ax, fig)
 plt.tight_layout()
-plt.savefig(RESULTS / "comparison_real.png", dpi=140, bbox_inches="tight")
+plt.savefig(RESULTS / "comparison_real.png", dpi=140, facecolor=F1_BG, bbox_inches="tight")
 plt.close(fig)
 print(f"Wrote {RESULTS / 'comparison_real.png'}")
 

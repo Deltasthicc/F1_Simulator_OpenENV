@@ -794,6 +794,17 @@ function setupSimWidget() {
 
       const model = modelSel ? modelSel.value : "heuristic";
 
+      // Update status to reflect expected wait time per model
+      if (statusEl) {
+        const waitHint = model === "qwen3"
+          ? "running Qwen3-0.6B on CPU — takes ~2 min, please wait…"
+          : model === "grpo_v1"
+          ? "fetching GRPO v1 reference score…"
+          : "running…";
+        statusEl.textContent = waitHint;
+        statusEl.className = "sim-out-status running";
+      }
+
       let data;
       try {
         const resp = await fetch("/simulate", {

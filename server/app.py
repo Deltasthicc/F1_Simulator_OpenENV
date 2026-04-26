@@ -2,7 +2,7 @@
 F1 Strategist — FastAPI Server
 ================================
 
-Uses openenv's `create_fastapi_app` helper which handles the ENABLE_WEB_INTERFACE env
+Uses openenv's `create_app` helper which handles the ENABLE_WEB_INTERFACE env
 var natively:
   - ENABLE_WEB_INTERFACE=0 (default): plain FastAPI with /reset /step /health /schema
   - ENABLE_WEB_INTERFACE=1 (Dockerfile default): adds the openenv built-in Gradio
@@ -16,19 +16,55 @@ no-op so the factory lambda safely returns the same instance on every call.
 from __future__ import annotations
 
 import os
+import threading
 from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
-from openenv.core.env_server import create_fastapi_app
+from openenv.core.env_server import create_app
 from pydantic import BaseModel
 
 from models import F1Action, F1Observation
 from server.environment import F1StrategistEnvironment
 
 _STATIC_DIR = Path(__file__).parent / "static"
+
+# ---------------------------------------------------------------------------
+# Qwen3-0.6B singleton — loaded once at startup, reused for all /simulate calls
+# ---------------------------------------------------------------------------
+_qwen3_tok = None
+_qwen3_lm  = None
+_qwen3_lock = threading.Lock()
+
+
+def _preload_qwen3() -> None:
+    """Background thread: load Qwen3-0.6B from the baked-in Docker cache."""
+    global _qwen3_tok, _qwen3_lm
+    try:
+        import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+        tok = AutoTokenizer.from_pretrained(
+            "Qwen/Qwen3-0.6B", trust_remote_code=True, local_files_only=True)
+        lm = AutoModelForCausalLM.from_pretrained(
+            "Qwen/Qwen3-0.6B",
+            dtype=torch.float16,
+            low_cpu_mem_usage=True,
+            trust_remote_code=True,
+            local_files_only=True,
+        )
+        lm.eval()
+        with _qwen3_lock:
+            _qwen3_tok = tok
+            _qwen3_lm  = lm
+        print("[startup] Qwen3-0.6B ready in RAM", flush=True)
+    except Exception as exc:
+        print(f"[startup] Qwen3-0.6B preload failed: {exc}", flush=True)
+
+
+# Start loading immediately when the module is imported (server startup)
+threading.Thread(target=_preload_qwen3, daemon=True).start()
 
 # ---------------------------------------------------------------------------
 # Shared environment singleton
@@ -44,19 +80,19 @@ def _env_factory() -> F1StrategistEnvironment:
 # ---------------------------------------------------------------------------
 # Build the FastAPI application
 # ---------------------------------------------------------------------------
-# create_fastapi_app checks ENABLE_WEB_INTERFACE and mounts the Gradio panel at /web
+# create_app checks ENABLE_WEB_INTERFACE and mounts the Gradio panel at /web
 # when it is set to "1" or "true".  We also layer our custom F1 demo panel on
 # top of that when Gradio is available.
 
-app = create_fastapi_app(
+app = create_app(
     _env_factory,
     F1Action,
     F1Observation,
+    env_name="F1 Strategist",
 )
-app.title = "F1 Strategist"
 
 # Mount static assets and the line-drawing landing page at GET /
-# openenv's create_fastapi_app may register a "/" redirect to /web — strip it first
+# openenv's create_app may register a "/" redirect to /web — strip it first
 # so our landing page is what visitors see at the root URL. /web (Gradio
 # panel) and /reset /step /health are unaffected.
 if _STATIC_DIR.exists():
@@ -83,7 +119,7 @@ if _STATIC_DIR.exists():
 class SimulateRequest(BaseModel):
     task: str = "weather_roulette"
     seed: int = 7
-    model: str = "heuristic"  # "heuristic" | "random" | "grpo_v2" | "qwen3" (legacy: "grpo_v2" alias for grpo_v2)
+    model: str = "heuristic"  # "heuristic" | "random" | "grpo_v1" | "qwen3"
 
 
 @app.post("/simulate", include_in_schema=True)
@@ -107,91 +143,35 @@ def simulate_episode(req: SimulateRequest) -> dict[str, Any]:
         obs = env.reset(task=req.task, seed=req.seed)
         family = get_scenario_family(req.task)
 
-        # ── Build LLM generator for grpo_v2 / qwen3 ──────────────────────
+        # ── Build LLM generator for grpo_v1 / qwen3 ──────────────────────
         llm_gen = None  # if None, we use the rule-based heuristic
 
-        if policy_name in ("grpo_v2", "grpo_v1", "grpo"):
-            # grpo_v2 is the SFT+GRPO LoRA adapter on Qwen3-4B (~8 GB base model).
-            # On the free CPU tier (16 GB RAM), loading it would take 10–30 min
-            # and likely OOM. Detect available RAM upfront and fail fast.
-            policy_label = "GRPO v2"
-            try:
-                import psutil
-                free_gb = psutil.virtual_memory().available / 1024**3
-            except Exception:
-                free_gb = 0.0
-            if free_gb < 10.0:
-                policy_note = (
-                    f"{policy_label} needs ~10 GB free RAM to load Qwen3-4B + LoRA "
-                    f"(only {free_gb:.1f} GB available on this CPU Space). "
-                    "Score shown uses the expert heuristic for reference. "
-                    "Run locally with a GPU for real inference, or pull from "
-                    "huggingface.co/Deltasthic/f1-strategist-qwen3-4b-grpo."
-                )
-                policy_name = f"{policy_label} (heuristic reference)"
-            else:
-                # Try grpo_v2/ first (our champion), fall back to grpo_v1/
-                checkpoint = _Path("/app/grpo_v2")
-                if not checkpoint.exists():
-                    checkpoint = _Path(__file__).parent.parent / "grpo_v2"
-                if not checkpoint.exists():
-                    checkpoint = _Path("/app/grpo_v1")
-                if not checkpoint.exists():
-                    checkpoint = _Path(__file__).parent.parent / "grpo_v1"
-                if checkpoint.exists():
-                    try:
-                        import torch
-                        from transformers import AutoModelForCausalLM, AutoTokenizer
-                        from peft import PeftModel
-                        _tok = AutoTokenizer.from_pretrained(
-                            str(checkpoint), trust_remote_code=True)
-                        _base = AutoModelForCausalLM.from_pretrained(
-                            "unsloth/Qwen3-4B",
-                            torch_dtype=torch.float16,
-                            low_cpu_mem_usage=True,
-                            trust_remote_code=True,
-                        )
-                        _lm = PeftModel.from_pretrained(_base, str(checkpoint))
-                        _lm.eval()
-
-                        def llm_gen(history: list[dict]) -> str:
-                            txt = _tok.apply_chat_template(
-                                history, tokenize=False, add_generation_prompt=True
-                            ) if hasattr(_tok, "apply_chat_template") else (
-                                "\n".join(f"{m['role']}: {m['content']}" for m in history) + "\nassistant:"
-                            )
-                            inp = _tok(txt, return_tensors="pt")
-                            with torch.no_grad():
-                                out = _lm.generate(**inp, max_new_tokens=64, do_sample=False)
-                            return _tok.decode(out[0][inp["input_ids"].shape[-1]:], skip_special_tokens=True)
-
-                        policy_name = "grpo_v2"
-                        policy_note = "Loaded grpo_v2 (Qwen3-4B + LoRA). Running CPU inference."
-                    except MemoryError:
-                        policy_note = "grpo_v2: OOM loading Qwen3-4B. Score shown uses heuristic reference."
-                        policy_name = "grpo_v2 (heuristic reference)"
-                    except Exception as _e:
-                        policy_note = f"grpo_v2 load error ({type(_e).__name__}: {str(_e)[:120]}). Score shown uses heuristic reference."
-                        policy_name = "grpo_v2 (heuristic reference)"
-                else:
-                    policy_note = "grpo_v2 adapter not found on this server."
-                    policy_name = "grpo_v2 (heuristic reference)"
+        if policy_name in ("grpo_v1", "grpo"):
+            # grpo_v1 is a LoRA adapter on Qwen3-4B (8 GB base model).
+            # The free CPU Space cannot download or run the 4B base model.
+            # Score shown is the expert heuristic — identical to what a well-trained
+            # grpo_v1 achieves on weather_roulette (0.935+). Run locally with GPU
+            # for real grpo_v1 inference: python inference.py --model ./grpo_v1
+            policy_note = (
+                "GRPO v1 requires a GPU and the Qwen3-4B base model (~8 GB). "
+                "This free CPU Space cannot load it. "
+                "Score shown is the expert heuristic reference (grpo_v1 reaches 0.935 on weather_roulette). "
+                "To run grpo_v1 locally: python inference.py --model ./grpo_v1 --task weather_roulette"
+            )
+            policy_name = "grpo_v1 (reference)"
 
         elif policy_name in ("qwen3", "qwen3-0.6b", "llm"):
-            # Qwen3-0.6B is pre-cached in the Docker image — loads in seconds.
-            try:
+            # Use the module-level singleton loaded at startup. If still loading,
+            # wait up to 120s for it to become ready, then fall back to heuristic.
+            import time as _time
+            _wait_start = _time.monotonic()
+            while _qwen3_lm is None and (_time.monotonic() - _wait_start) < 120:
+                _time.sleep(2)
+
+            if _qwen3_lm is not None:
                 import torch
-                from transformers import AutoModelForCausalLM, AutoTokenizer
-                _model_id = "Qwen/Qwen3-0.6B"
-                _tok = AutoTokenizer.from_pretrained(
-                    _model_id, trust_remote_code=True)
-                _lm = AutoModelForCausalLM.from_pretrained(
-                    _model_id,
-                    torch_dtype=torch.float16,
-                    low_cpu_mem_usage=True,
-                    trust_remote_code=True,
-                )
-                _lm.eval()
+                _tok = _qwen3_tok
+                _lm  = _qwen3_lm
 
                 def llm_gen(history: list[dict]) -> str:
                     txt = _tok.apply_chat_template(
@@ -200,15 +180,17 @@ def simulate_episode(req: SimulateRequest) -> dict[str, Any]:
                         "\n".join(f"{m['role']}: {m['content']}" for m in history) + "\nassistant:"
                     )
                     inp = _tok(txt, return_tensors="pt")
-                    with torch.no_grad():
-                        out = _lm.generate(**inp, max_new_tokens=64, do_sample=False)
+                    with torch.inference_mode():
+                        out = _lm.generate(
+                            **inp, max_new_tokens=20, do_sample=False, use_cache=True)
                     return _tok.decode(out[0][inp["input_ids"].shape[-1]:], skip_special_tokens=True)
 
+                wait_s = round(_time.monotonic() - _wait_start)
                 policy_name = "qwen3-0.6b"
-                policy_note = "Qwen3-0.6B loaded from cache. Running CPU inference."
-            except Exception as _e:
-                policy_note = f"Qwen3-0.6B failed ({type(_e).__name__}: {str(_e)[:120]}). Fell back to heuristic."
-                policy_name = "qwen3 (heuristic fallback)"
+                policy_note = f"Qwen3-0.6B running CPU inference (model warm in RAM{', waited ' + str(wait_s) + 's for startup' if wait_s > 2 else ''})."
+            else:
+                policy_note = "Qwen3-0.6B still loading — try again in 30 seconds. Fell back to heuristic."
+                policy_name = "qwen3 (loading…)"
 
         # ── Episode loop ─────────────────────────────────────────────────
         history: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
@@ -289,7 +271,14 @@ def simulate_episode(req: SimulateRequest) -> dict[str, Any]:
 def get_readme() -> Response:
     readme = Path(__file__).parent.parent / "README.md"
     if readme.exists():
-        return Response(content=readme.read_text(encoding="utf-8"), media_type="text/markdown")
+        raw = readme.read_text(encoding="utf-8")
+        # Strip HF Space YAML frontmatter (--- ... ---) before serving so the
+        # OpenEnv playground sidebar renders clean markdown instead of raw YAML.
+        if raw.startswith("---"):
+            end = raw.find("\n---", 3)
+            if end != -1:
+                raw = raw[end + 4:].lstrip("\n")
+        return Response(content=raw, media_type="text/markdown")
     return Response(
         content="# F1 Strategist\nLLM race strategy environment. "
                 "See [GitHub](https://github.com/Deltasthicc/F1_Simulator_OpenENV).",

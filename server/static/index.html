@@ -238,10 +238,16 @@
           <div class="telem-item"><span class="telem-k">SCORE</span><span class="telem-v red" id="telem-score">—</span></div>
         </div>
 
-        <!-- Lap log -->
-        <div class="sim-log-wrap">
-          <div class="sim-log-label">DECISION LOG</div>
-          <ol id="sim-log" class="sim-log"></ol>
+        <!-- Lap log + race map (two columns) -->
+        <div class="sim-output-body">
+          <div class="sim-log-wrap">
+            <div class="sim-log-label">DECISION LOG</div>
+            <ol id="sim-log" class="sim-log"></ol>
+          </div>
+          <div class="sim-track-wrap">
+            <div class="sim-log-label">RACE MAP</div>
+            <svg id="track-svg" class="sim-track-svg"></svg>
+          </div>
         </div>
 
         <!-- Final result (shown after race) -->
@@ -255,7 +261,6 @@
       </div>
 
       <div class="sim-footer-row">
-        <a href="#api" class="sim-playground-link">Try the live simulator →</a>
         <div class="sim-cmd-mini">
           <span class="sim-cmd-mini-label">or run locally:</span>
           <pre id="sim-cmd" class="sim-cmd-inline">python inference.py --task weather_roulette --seed 7</pre>
@@ -594,6 +599,7 @@ curl -X POST .../simulate \
   </div>
 </section>
 
+<script src="/static/track-map.js?v=20260426" defer></script>
 <script src="/static/app.js?v=20260426-grpov2" defer></script>
 </body>
 </html>

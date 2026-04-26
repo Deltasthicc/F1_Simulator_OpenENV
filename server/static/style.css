@@ -540,6 +540,11 @@ svg .pit-pulse  { fill: var(--red); }
   background: var(--teal); transition: width 300ms ease, background 300ms;
 }
 
+/* two-column layout: decision log on left, race map on right */
+.sim-output-body { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+@media (max-width: 680px) { .sim-output-body { grid-template-columns: 1fr; } }
+.sim-track-wrap { padding: 12px 14px; border-left: 1px solid var(--border); display: flex; flex-direction: column; }
+.sim-track-svg { flex: 1; min-height: 220px; max-height: 300px; width: 100%; background: #0a0a0a; border-radius: 4px; }
 .sim-log-wrap { padding: 12px 14px; max-height: 280px; overflow-y: auto; }
 .sim-log-label { font-size: 9px; letter-spacing: 0.2em; color: var(--dim); text-transform: uppercase; margin-bottom: 8px; }
 .sim-log { list-style: none; display: flex; flex-direction: column; gap: 4px; }

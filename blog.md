@@ -37,6 +37,19 @@ And it's **dramatic.** "Trained model called the rain pit one lap before the fie
 
 ## The environment
 
+The environment is an [OpenEnv](https://huggingface.co/openenv)-compatible FastAPI server. Each episode is one race stint. The agent receives a natural-language observation (lap, position, tyre state, fuel, weather, last action's outcome) and responds with one of ~20 strategic commands:
+
+| Category | Commands |
+|---|---|
+| Investigation | `INSPECT_TYRE_DEGRADATION`, `CHECK_OPPONENT_STRATEGY`, `REQUEST_FORECAST`, `ASSESS_UNDERCUT_WINDOW`, `INSPECT_FUEL_MARGIN` |
+| Pit decisions | `PIT_NOW soft/medium/hard/inter/wet` |
+| Pace management | `SET_MODE push/conserve/race/defend` |
+| Comms | `RADIO_DRIVER "<message>"` |
+| Positioning | `DEFEND_POSITION`, `HOLD_GAP` |
+| Terminal | `DONE` |
+
+The agent does **not** drive the car. A physics model handles throttle, steering, tyre wear, and fuel burn. The agent is the strategist on the pit wall.
+
 ### Hidden state — the thing that makes it hard
 
 Every episode has a latent layer the agent can't see directly:
@@ -163,6 +176,16 @@ Held-out eval, 6 scenarios × 5 seeds, **real LLM forward pass through the env a
 **+0.20 average lift over untrained.** Closes 33% of the random→expert gap.
 
 And the part that genuinely surprised us — on the weather scenario the trained model (0.965) actually edges out the rule-based expert (0.950). Not by much. But real. The model learned to call `REQUEST_FORECAST` early, watch the rain probability cone climb, and time the inter pit one lap before peak. Investigation discipline plus weather reasoning, together. Not memorized. Learned. Rollout transcript is in [`demo-assets/trained-rollout-transcript.txt`](demo-assets/trained-rollout-transcript.txt) if you want to read it.
+
+### Key decision — Lap 7, Spa, rain peak
+
+The most illustrative side-by-side from those rollouts:
+
+**Untrained Qwen3-4B:** stays out on mediums through lap 7 (ignores the `REQUEST_FORECAST` signal), pits for *softs* at lap 10 (wrong compound in standing water), finishes P6. Score **0.347**.
+
+**GRPO v2 (ours):** calls `REQUEST_FORECAST` at lap 5, `RADIO_DRIVER "box for inters"` at lap 7, `PIT_NOW inter` at lap 8 — one lap before rain peak, correct compound. Finishes P3. Score **0.985**, delta **+0.638**.
+
+This is not cherry-picked. It is the median outcome across 5 seeds for `weather_roulette`.
 
 ### Where we underperform — being straight about it
 

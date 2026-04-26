@@ -620,12 +620,7 @@ svg .pit-pulse  { fill: var(--red); }
 .link-btn--ghost:hover { border-color: var(--red); color: var(--red); }
 
 /* ── TEAM ───────────────────────────────────────────── */
-.team-row { display: flex; justify-content: center; gap: 24px; margin: 32px 0; flex-wrap: wrap; width: 100%; }
-.team-card { border: 1px solid var(--rule); padding: 22px 30px; text-align: center; min-width: 200px; transition: border-color 200ms; }
-.team-card:hover { border-color: var(--red-dim); }
-.team-name { font-size: 13px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); margin-bottom: 6px; }
-.team-role { font-size: 10.5px; color: var(--dim); margin-bottom: 10px; }
-.team-tag { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--red); }
+/* team section — names only, no cards */
 .org-row { display: flex; justify-content: center; align-items: center; gap: 8px; font-size: 11px; color: var(--dim); margin-bottom: 32px; flex-wrap: wrap; }
 .org-link { color: var(--dim); text-decoration: none; }
 .org-link:hover { color: var(--red); }

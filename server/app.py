@@ -273,6 +273,93 @@ def get_readme() -> Response:
     )
 
 
+# ---------------------------------------------------------------------------
+# /blog endpoint — renders blog.md as a self-contained HTML page
+# ---------------------------------------------------------------------------
+
+@app.get("/blog", include_in_schema=False)
+def get_blog() -> Response:
+    blog_path = Path(__file__).parent.parent / "blog.md"
+    if not blog_path.exists():
+        blog_path = Path("/app/blog.md")
+    md = blog_path.read_text(encoding="utf-8") if blog_path.exists() else "# Blog\n\nComing soon."
+
+    # Convert markdown to HTML using a minimal renderer
+    import re
+    html_lines: list[str] = []
+    in_code = False
+    in_pre = False
+    for line in md.splitlines():
+        if line.startswith("```"):
+            if not in_pre:
+                lang = line[3:].strip() or "text"
+                html_lines.append(f'<pre class="code-block"><code class="lang-{lang}">')
+                in_pre = True
+            else:
+                html_lines.append("</code></pre>")
+                in_pre = False
+            continue
+        if in_pre:
+            html_lines.append(line.replace("<", "&lt;").replace(">", "&gt;"))
+            continue
+        # Headings
+        if line.startswith("# "):   line = f'<h1>{line[2:]}</h1>'
+        elif line.startswith("## "): line = f'<h2>{line[3:]}</h2>'
+        elif line.startswith("### "): line = f'<h3>{line[4:]}</h3>'
+        elif line.startswith("#### "): line = f'<h4>{line[5:]}</h4>'
+        elif line.startswith("---"):   line = "<hr>"
+        elif line.startswith("- "):   line = f'<li>{line[2:]}</li>'
+        elif not line.strip():         line = "<br>"
+        else:
+            # Bold / italic / inline code / links
+            line = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", line)
+            line = re.sub(r"\*(.+?)\*",     r"<em>\1</em>",         line)
+            line = re.sub(r"`(.+?)`",       r"<code>\1</code>",     line)
+            line = re.sub(r"\[(.+?)\]\((.+?)\)", r'<a href="\2" target="_blank">\1</a>', line)
+            line = f"<p>{line}</p>"
+        html_lines.append(line)
+
+    body = "\n".join(html_lines)
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>F1 Strategist — Blog</title>
+<style>
+  :root {{ --bg:#0c0c0c; --ink:#eeeeee; --dim:#666; --red:#e10600; --rule:#1e1e1e; --teal:#00d2be; }}
+  * {{ box-sizing:border-box; margin:0; padding:0; }}
+  body {{ background:var(--bg); color:var(--ink); font-family:'JetBrains Mono',monospace,sans-serif;
+         max-width:820px; margin:0 auto; padding:48px 24px 96px; line-height:1.7; }}
+  h1 {{ font-size:26px; color:var(--red); margin:0 0 8px; letter-spacing:-0.01em; }}
+  h2 {{ font-size:17px; color:var(--ink); margin:40px 0 10px; border-bottom:1px solid var(--rule);
+        padding-bottom:6px; text-transform:uppercase; letter-spacing:0.08em; }}
+  h3 {{ font-size:14px; color:var(--teal); margin:24px 0 8px; }}
+  h4 {{ font-size:12px; color:var(--dim); margin:16px 0 6px; text-transform:uppercase; letter-spacing:0.1em; }}
+  p {{ font-size:13.5px; color:#ccc; margin:8px 0; }}
+  li {{ font-size:13.5px; color:#ccc; margin:4px 0 4px 20px; list-style:disc; }}
+  hr {{ border:none; border-top:1px solid var(--rule); margin:32px 0; }}
+  code {{ background:#111; color:var(--teal); padding:2px 6px; font-size:12px; }}
+  pre.code-block {{ background:#080808; border:1px solid var(--rule); padding:16px; overflow-x:auto;
+                    margin:16px 0; }}
+  pre.code-block code {{ background:none; padding:0; font-size:12px; color:#aaa; }}
+  strong {{ color:var(--ink); }}
+  a {{ color:var(--red); text-decoration:none; }}
+  a:hover {{ text-decoration:underline; }}
+  br {{ display:block; margin:4px 0; }}
+  .back {{ display:inline-block; margin-bottom:32px; font-size:11px; color:var(--dim);
+           letter-spacing:0.1em; text-transform:uppercase; }}
+  .back:hover {{ color:var(--red); }}
+</style>
+</head>
+<body>
+<a class="back" href="/">← Back to F1 Strategist</a>
+{body}
+</body>
+</html>"""
+    return Response(content=html, media_type="text/html")
+
+
 # Optional: also mount our richer custom Gradio demo panel at /demo
 if os.environ.get("ENABLE_WEB_INTERFACE") == "1":
     try:

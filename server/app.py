@@ -16,6 +16,7 @@ no-op so the factory lambda safely returns the same instance on every call.
 from __future__ import annotations
 
 import os
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +30,41 @@ from models import F1Action, F1Observation
 from server.environment import F1StrategistEnvironment
 
 _STATIC_DIR = Path(__file__).parent / "static"
+
+# ---------------------------------------------------------------------------
+# Qwen3-0.6B singleton — loaded once at startup, reused for all /simulate calls
+# ---------------------------------------------------------------------------
+_qwen3_tok = None
+_qwen3_lm  = None
+_qwen3_lock = threading.Lock()
+
+
+def _preload_qwen3() -> None:
+    """Background thread: load Qwen3-0.6B from the baked-in Docker cache."""
+    global _qwen3_tok, _qwen3_lm
+    try:
+        import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+        tok = AutoTokenizer.from_pretrained(
+            "Qwen/Qwen3-0.6B", trust_remote_code=True, local_files_only=True)
+        lm = AutoModelForCausalLM.from_pretrained(
+            "Qwen/Qwen3-0.6B",
+            dtype=torch.float16,
+            low_cpu_mem_usage=True,
+            trust_remote_code=True,
+            local_files_only=True,
+        )
+        lm.eval()
+        with _qwen3_lock:
+            _qwen3_tok = tok
+            _qwen3_lm  = lm
+        print("[startup] Qwen3-0.6B ready in RAM", flush=True)
+    except Exception as exc:
+        print(f"[startup] Qwen3-0.6B preload failed: {exc}", flush=True)
+
+
+# Start loading immediately when the module is imported (server startup)
+threading.Thread(target=_preload_qwen3, daemon=True).start()
 
 # ---------------------------------------------------------------------------
 # Shared environment singleton
@@ -125,23 +161,17 @@ def simulate_episode(req: SimulateRequest) -> dict[str, Any]:
             policy_name = "grpo_v1 (reference)"
 
         elif policy_name in ("qwen3", "qwen3-0.6b", "llm"):
-            # Qwen3-0.6B is pre-cached in the Docker image — load from disk only,
-            # never contact HF Hub (avoids rate-limit / auth hangs on cold start).
-            try:
+            # Use the module-level singleton loaded at startup. If still loading,
+            # wait up to 120s for it to become ready, then fall back to heuristic.
+            import time as _time
+            _wait_start = _time.monotonic()
+            while _qwen3_lm is None and (_time.monotonic() - _wait_start) < 120:
+                _time.sleep(2)
+
+            if _qwen3_lm is not None:
                 import torch
-                from transformers import AutoModelForCausalLM, AutoTokenizer
-                _model_id = "Qwen/Qwen3-0.6B"
-                # local_files_only=True: never ping HF Hub, load purely from cache
-                _tok = AutoTokenizer.from_pretrained(
-                    _model_id, trust_remote_code=True, local_files_only=True)
-                _lm = AutoModelForCausalLM.from_pretrained(
-                    _model_id,
-                    dtype=torch.float16,
-                    low_cpu_mem_usage=True,
-                    trust_remote_code=True,
-                    local_files_only=True,
-                )
-                _lm.eval()
+                _tok = _qwen3_tok
+                _lm  = _qwen3_lm
 
                 def llm_gen(history: list[dict]) -> str:
                     txt = _tok.apply_chat_template(
@@ -150,17 +180,17 @@ def simulate_episode(req: SimulateRequest) -> dict[str, Any]:
                         "\n".join(f"{m['role']}: {m['content']}" for m in history) + "\nassistant:"
                     )
                     inp = _tok(txt, return_tensors="pt")
-                    # max_new_tokens=20: F1 actions are 2-4 tokens; capping saves ~3x time
                     with torch.inference_mode():
                         out = _lm.generate(
                             **inp, max_new_tokens=20, do_sample=False, use_cache=True)
                     return _tok.decode(out[0][inp["input_ids"].shape[-1]:], skip_special_tokens=True)
 
+                wait_s = round(_time.monotonic() - _wait_start)
                 policy_name = "qwen3-0.6b"
-                policy_note = "Qwen3-0.6B loaded from cache. Running CPU inference."
-            except Exception as _e:
-                policy_note = f"Qwen3-0.6B failed ({type(_e).__name__}: {str(_e)[:120]}). Fell back to heuristic."
-                policy_name = "qwen3 (heuristic fallback)"
+                policy_note = f"Qwen3-0.6B running CPU inference (model warm in RAM{', waited ' + str(wait_s) + 's for startup' if wait_s > 2 else ''})."
+            else:
+                policy_note = "Qwen3-0.6B still loading — try again in 30 seconds. Fell back to heuristic."
+                policy_name = "qwen3 (loading…)"
 
         # ── Episode loop ─────────────────────────────────────────────────
         history: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]

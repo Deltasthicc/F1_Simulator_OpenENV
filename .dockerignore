@@ -56,9 +56,10 @@ results/
 .DS_Store
 Thumbs.db
 
-# Markdown except the top-level README (HF Spaces parses README frontmatter)
+# Markdown except the top-level README and blog (HF Spaces serves these via /readme and /blog)
 *.md
 !README.md
+!blog.md
 
 # Environment files
 .env

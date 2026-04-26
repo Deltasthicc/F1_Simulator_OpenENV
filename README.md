@@ -46,13 +46,15 @@ models:
 
 ## Training evidence
 
-Real run results — RTX 5090, 800 steps, Qwen3-4B LoRA.
+Real run results — RTX 5090, 800 steps, Qwen3-4B LoRA (grpo_v2).
 
-![Eval curve — before vs after GRPO across 6 scenario families](https://raw.githubusercontent.com/Deltasthicc/F1_Simulator_OpenENV/main/results/eval_curve.png)
+![6-scenario eval — random vs untrained vs GRPO trained vs expert across all scenario families](https://raw.githubusercontent.com/Deltasthicc/F1_Simulator_OpenENV/main/results/eval_six_scenarios.png)
 
-![GRPO training reward curve — 800 steps, peak 0.907 @ step 480](https://raw.githubusercontent.com/Deltasthicc/F1_Simulator_OpenENV/main/results/training_loss_curve.png)
+![GRPO v2 reward curve — 800 steps, showing consistent reward increase](https://raw.githubusercontent.com/Deltasthicc/F1_Simulator_OpenENV/main/results/grpo_v2_reward_curve.png)
 
 ![Race story — Weather Roulette Spa, untrained vs trained, position / tyre / score breakdown](https://raw.githubusercontent.com/Deltasthicc/F1_Simulator_OpenENV/main/results/race_story.png)
+
+![Model journey — performance progression across training iterations](https://raw.githubusercontent.com/Deltasthicc/F1_Simulator_OpenENV/main/results/journey.png)
 
 It is lap 8 of 12 at Spa. Light rain has started. Verstappen ahead of you just stayed out on slicks. Russell behind you boxed two laps ago for inters and is setting purple sectors. Your tyres have 4 laps of grip left. Your pit window closes in 3. The board on the pit wall is asking what to call. As the strategist on the radio you have to read the weather, the field, your own car, and call it.
 

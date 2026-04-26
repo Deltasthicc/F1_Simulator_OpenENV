@@ -15,8 +15,9 @@
   <nav>
     <a href="#pipeline">how it works</a>
     <a href="#circuits">circuits</a>
-    <a href="#evidence">results</a>
-    <a href="/web">interactive</a>
+    <a href="#gallery">results</a>
+    <a href="#api">api</a>
+    <a href="/web" target="_blank" rel="noreferrer">interactive</a>
     <a href="https://huggingface.co/spaces/Deltasthic/f1-strategist" target="_blank" rel="noreferrer">hf space</a>
     <a href="https://github.com/Deltasthicc/F1_Simulator_OpenENV" target="_blank" rel="noreferrer">github</a>
   </nav>
@@ -31,7 +32,7 @@
         <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
       </filter>
       <filter id="redGlow" x="-60%" y="-60%" width="220%" height="220%">
-        <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur"/>
+        <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur"/>
         <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
       </filter>
       <filter id="pulse" x="-80%" y="-80%" width="260%" height="260%">
@@ -48,7 +49,7 @@
 
   <main class="hud">
     <section class="lede">
-      <div class="scenario-tag" id="scenario-tag">WEATHER ROULETTE · SPA · 12 LAPS</div>
+      <div class="scenario-tag">WEATHER ROULETTE · SPA · 12 LAPS</div>
       <h1 id="title-text"></h1>
       <p id="subtitle"></p>
     </section>
@@ -58,8 +59,8 @@
     </section>
     <section class="readout">
       <div class="row"><span class="k">env</span><span class="v">openenv-core 0.2.3</span></div>
-      <div class="row"><span class="k">policy</span><span class="v">Qwen3-4B + GRPO <span class="badge-green">trained</span></span></div>
-      <div class="row"><span class="k">scenario</span><span class="v" id="scenario-readout">weather_roulette · Spa · 12 laps</span></div>
+      <div class="row"><span class="k">policy</span><span class="v">Qwen3-4B + GRPO <span class="badge-trained">trained</span></span></div>
+      <div class="row"><span class="k">scenario</span><span class="v">weather_roulette · Spa · 12 laps</span></div>
       <div class="row"><span class="k">score</span><span class="v red" id="score-readout">—</span></div>
     </section>
     <footer class="footer">
@@ -88,10 +89,8 @@
         <div class="pipe-icon">
           <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.4">
             <rect x="8" y="8" width="32" height="32" rx="3"/>
-            <path d="M16 24 L24 16 L32 24"/>
-            <path d="M24 16 L24 34"/>
-            <circle cx="16" cy="34" r="3"/>
-            <circle cx="32" cy="34" r="3"/>
+            <path d="M16 24 L24 16 L32 24"/><path d="M24 16 L24 34"/>
+            <circle cx="16" cy="34" r="3"/><circle cx="32" cy="34" r="3"/>
           </svg>
         </div>
         <h3>OpenEnv Environment</h3>
@@ -105,7 +104,7 @@
         <div class="pipe-api"><code>POST /reset · POST /step · GET /state</code></div>
       </div>
 
-      <div class="pipe-card pipe-card--center" data-reveal>
+      <div class="pipe-card" data-reveal>
         <div class="pipe-num">02</div>
         <div class="pipe-icon">
           <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.4">
@@ -119,7 +118,7 @@
         <h3>GRPO Training</h3>
         <p>Qwen3-4B warm-started with SFT on expert traces, then GRPO-trained for 800 steps with a fully-deterministic reward function. No LLM judge — every reward is a Python check.</p>
         <ul class="pipe-bullets">
-          <li>SFT warm-start → GRPO start at 0.875</li>
+          <li>SFT warm-start → GRPO starts at 0.875</li>
           <li>800 steps · RTX 5090 · Unsloth LoRA</li>
           <li>6-dim weighted scalar reward</li>
           <li>Peak 0.907 @ step 480</li>
@@ -150,7 +149,7 @@
     </div>
 
     <div class="reward-dims" data-reveal>
-      <div class="dims-title">6-DIMENSION REWARD (weighted, deterministic)</div>
+      <div class="dims-title">6-DIMENSION REWARD (weighted, deterministic, no LLM judge)</div>
       <div class="dims-row">
         <div class="dim-item"><span class="dim-w">35%</span><span class="dim-n">Race result</span></div>
         <div class="dim-item"><span class="dim-w">20%</span><span class="dim-n">Strategic decisions</span></div>
@@ -168,23 +167,50 @@
   <div class="section-inner">
     <p class="section-label">ENVIRONMENT</p>
     <h2 class="section-title">6 scenario families across 25+ circuits</h2>
-    <p class="section-sub">Each circuit has a natural scenario archetype. The agent must generalize across very different strategic challenges — not just memorise one sequence.</p>
-
-    <div class="track-grid" id="track-grid">
-      <!-- injected by JS -->
-    </div>
+    <p class="section-sub">Each circuit has a natural scenario archetype. The agent must generalise across very different strategic challenges — not just memorise one sequence.</p>
+    <div class="track-grid" id="track-grid"></div>
   </div>
 </section>
 
-<!-- ═══════════ SECTION 4 — EVIDENCE ═══════════ -->
-<section id="evidence" class="screen screen-dark">
+<!-- ═══════════ SECTION 4 — EVIDENCE / GALLERY ═══════════ -->
+<section id="gallery" class="screen screen-dark">
   <div class="section-inner">
-    <p class="section-label">RESULTS</p>
-    <h2 class="section-title">Clear improvement over untrained baseline</h2>
-    <p class="section-sub">All numbers from the deterministic reward model. No cherry-picking — 5 seeds per task family, averaged. The "trained" column uses the actual grpo_v1 checkpoint on held-out seeds.</p>
+    <p class="section-label">TRAINING EVIDENCE</p>
+    <h2 class="section-title">Real run results — RTX 5090 · 800 steps · Qwen3-4B LoRA</h2>
+    <p class="section-sub">Every plot comes from the actual grpo_v1 checkpoint run. No cherry-picking — 5 seeds per task family, averaged. The training reward curve is from a live TRL/Unsloth run on the SSH server.</p>
 
+    <!-- Before/After race story -->
+    <div class="story-block" data-reveal>
+      <div class="story-title">KEY DECISION — LAP 7 · SPA · RAIN PEAK</div>
+      <div class="story-cols">
+        <div class="story-col">
+          <div class="story-badge bad">BEFORE — untrained baseline</div>
+          <ol class="story-log">
+            <li class="slog-line"><span class="slog-lap">L07</span> <span class="slog-cmd">STAY_OUT</span> <span class="slog-note">rain=0.45, mediums at 66%</span></li>
+            <li class="slog-line bad"><span class="slog-lap">L10</span> <span class="slog-cmd">PIT_NOW <span class="red">soft</span></span> <span class="slog-note bad">wrong compound in damp</span></li>
+            <li class="slog-line bad"><span class="slog-lap">L12</span> <span class="slog-cmd">DONE</span> <span class="slog-note bad">P6 finish — score 0.378</span></li>
+          </ol>
+        </div>
+        <div class="story-divider">
+          <div class="story-arrow-line"></div>
+          <span class="story-arrow-icon">→</span>
+          <div class="story-arrow-line"></div>
+        </div>
+        <div class="story-col">
+          <div class="story-badge good">AFTER — GRPO trained (grpo_v1)</div>
+          <ol class="story-log">
+            <li class="slog-line good"><span class="slog-lap">L07</span> <span class="slog-cmd">RADIO_DRIVER <span class="green">"box for inters"</span></span></li>
+            <li class="slog-line good"><span class="slog-lap">L08</span> <span class="slog-cmd">PIT_NOW <span class="green">inter</span></span> <span class="slog-note good">optimal window</span></li>
+            <li class="slog-line good"><span class="slog-lap">L12</span> <span class="slog-cmd">DONE</span> <span class="slog-note good">P4 finish — score 0.950 (+0.573)</span></li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- Score table + reward curve side by side -->
     <div class="evidence-layout">
       <div class="score-table-wrap" data-reveal>
+        <div class="evidence-sub-label">SCORE BY SCENARIO (5-seed average)</div>
         <table class="score-table">
           <thead>
             <tr>
@@ -205,59 +231,156 @@
           </tbody>
         </table>
         <div class="table-legend">
-          <span class="leg-dot col-random">■</span> random
-          <span class="leg-dot col-untrained">■</span> untrained
-          <span class="leg-dot col-trained">■</span> GRPO trained
-          <span class="leg-dot col-expert">■</span> expert heuristic
+          <span class="leg-dot col-random">■</span> random &nbsp;
+          <span class="leg-dot col-untrained">■</span> untrained &nbsp;
+          <span class="leg-dot col-trained">■</span> GRPO trained &nbsp;
+          <span class="leg-dot col-expert">■</span> expert
         </div>
       </div>
 
       <div class="curve-wrap" data-reveal>
-        <div class="curve-label">GRPO TRAINING REWARD CURVE</div>
-        <canvas id="reward-curve" width="480" height="260"></canvas>
+        <div class="evidence-sub-label">GRPO TRAINING REWARD CURVE</div>
+        <canvas id="reward-curve" width="480" height="240"></canvas>
         <div class="curve-legend">
-          <span class="cl cl-trained">— reward (smoothed)</span>
-          <span class="cl cl-expert">- - expert ceiling 0.905</span>
+          <span class="cl cl-trained">— smoothed reward</span>
+          <span class="cl cl-expert">- - expert 0.905</span>
           <span class="cl cl-untrained">— untrained 0.395</span>
         </div>
-        <div class="curve-caption">500 steps · Qwen3-4B LoRA · RTX 5090 · peak 0.907 @ step 480</div>
+        <div class="curve-caption">800 steps · Qwen3-4B LoRA · RTX 5090 · peak 0.907 @ step 480</div>
       </div>
     </div>
 
-    <!-- Before / After race story -->
-    <div class="story-block" data-reveal>
-      <div class="story-title">KEY DECISION — LAP 7 · SPA · RAIN PEAK</div>
-      <div class="story-cols">
-        <div class="story-col story-before">
-          <div class="story-badge bad">BEFORE — untrained</div>
-          <ol class="story-log">
-            <li class="slog-line">L07 <span class="slog-cmd">STAY_OUT</span> <span class="slog-note">rain=0.45, mediums at 66%</span></li>
-            <li class="slog-line bad">L10 <span class="slog-cmd">PIT_NOW <span class="red">soft</span></span> <span class="slog-note bad">wrong compound in damp</span></li>
-            <li class="slog-line bad">L11 <span class="slog-cmd dim">SET_MODE race</span> <span class="slog-note bad">P6 finish ↓</span></li>
-          </ol>
-          <div class="story-score bad">score 0.378 · race result 0.35</div>
-        </div>
-        <div class="story-arrow">→</div>
-        <div class="story-col story-after">
-          <div class="story-badge good">AFTER — GRPO trained</div>
-          <ol class="story-log">
-            <li class="slog-line good">L07 <span class="slog-cmd">RADIO_DRIVER <span class="green">"box for inters"</span></span></li>
-            <li class="slog-line good">L08 <span class="slog-cmd">PIT_NOW <span class="green">inter</span></span> <span class="slog-note good">optimal window, correct compound</span></li>
-            <li class="slog-line good">L12 <span class="slog-cmd dim">DONE</span> <span class="slog-note good">P4 finish ↑</span></li>
-          </ol>
-          <div class="story-score good">score 0.950 · delta +0.573</div>
-        </div>
+    <!-- PNG gallery from GitHub raw -->
+    <div class="evidence-sub-label" style="margin-bottom:16px" data-reveal>RACE STORY · TRACK GRID · TRAINING LOSS</div>
+    <div class="png-gallery" data-reveal>
+      <figure class="png-fig">
+        <img src="https://raw.githubusercontent.com/Deltasthicc/F1_Simulator_OpenENV/main/results/race_story.png"
+             alt="Race story: untrained vs trained position, tyre health, 6-dim score breakdown"
+             loading="lazy">
+        <figcaption>Race story — Weather Roulette Spa · untrained vs trained · position / tyre / score</figcaption>
+      </figure>
+      <div class="png-pair">
+        <figure class="png-fig">
+          <img src="https://raw.githubusercontent.com/Deltasthicc/F1_Simulator_OpenENV/main/results/training_loss_curve.png"
+               alt="GRPO training reward and loss curve" loading="lazy">
+          <figcaption>GRPO reward curve — 800 steps</figcaption>
+        </figure>
+        <figure class="png-fig">
+          <img src="https://raw.githubusercontent.com/Deltasthicc/F1_Simulator_OpenENV/main/results/track_grid.png"
+               alt="Track grid — 8 circuits with expert policy scores" loading="lazy">
+          <figcaption>8 circuits — expert policy scores</figcaption>
+        </figure>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ═══════════ SECTION 5 — TRY IT ═══════════ -->
-<section id="api" class="screen">
+<!-- ═══════════ SECTION 5 — MEDIA / BLOG / VIDEO ═══════════ -->
+<section id="media" class="screen">
+  <div class="section-inner">
+    <p class="section-label">MATERIALS</p>
+    <h2 class="section-title">Blog, notebook &amp; demo video</h2>
+    <p class="section-sub">All judge-required materials in one place. The Colab notebook is self-contained and re-runnable. The blog post is the full writeup on HF. The video walks through the live environment.</p>
+
+    <div class="media-grid">
+      <div class="media-card" data-reveal>
+        <div class="media-icon">
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.4">
+            <rect x="6" y="8" width="36" height="32" rx="2"/>
+            <path d="M14 18 L34 18"/><path d="M14 24 L28 24"/><path d="M14 30 L24 30"/>
+          </svg>
+        </div>
+        <div class="media-card-label">HF BLOG POST</div>
+        <h3 class="media-card-title">Teaching an LLM to be an F1 Race Engineer</h3>
+        <p class="media-card-desc">Full writeup: environment design, GRPO training setup, results analysis, and key learnings. Pushed as <code>blog.md</code> to the HF Space repo.</p>
+        <a class="media-btn" href="https://huggingface.co/spaces/Deltasthic/f1-strategist/blob/main/blog.md" target="_blank" rel="noreferrer">Read blog →</a>
+      </div>
+
+      <div class="media-card" data-reveal>
+        <div class="media-icon">
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.4">
+            <circle cx="24" cy="24" r="18"/>
+            <path d="M20 16 L32 24 L20 32 Z" fill="currentColor" stroke="none"/>
+          </svg>
+        </div>
+        <div class="media-card-label">DEMO VIDEO</div>
+        <h3 class="media-card-title">2-minute environment walkthrough</h3>
+        <p class="media-card-desc">Shows the environment in action, the trained vs untrained comparison on Weather Roulette, and the key pit-call decision at Lap 7. Link in README.</p>
+        <a class="media-btn media-btn--ghost" href="https://github.com/Deltasthicc/F1_Simulator_OpenENV#readme" target="_blank" rel="noreferrer">See README for link →</a>
+      </div>
+
+      <div class="media-card" data-reveal>
+        <div class="media-icon">
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.4">
+            <rect x="6" y="6" width="36" height="36" rx="2"/>
+            <path d="M18 18 L30 24 L18 30 Z" fill="currentColor" stroke="none"/>
+            <path d="M6 14 L42 14"/>
+          </svg>
+        </div>
+        <div class="media-card-label">COLAB NOTEBOOK</div>
+        <h3 class="media-card-title">Re-runnable training notebook</h3>
+        <p class="media-card-desc">Full environment smoke test, SFT warm-start, GRPO training with TRL + Unsloth, evaluation, and result plots. Verified runnable on T4/A100.</p>
+        <a class="media-btn" href="https://colab.research.google.com/github/Deltasthicc/F1_Simulator_OpenENV/blob/main/notebooks/f1_strategist_training_colab.ipynb" target="_blank" rel="noreferrer">Open in Colab →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ SECTION 6 — API / TRY IT ═══════════ -->
+<section id="api" class="screen screen-dark">
   <div class="section-inner">
     <p class="section-label">API</p>
-    <h2 class="section-title">Connect and run your own agent</h2>
-    <p class="section-sub">The live HF Space exposes the full OpenEnv API. Any agent — scripted, LLM, or RL — can step through a race episode with three HTTP calls.</p>
+    <h2 class="section-title">Try the simulator yourself</h2>
+    <p class="section-sub">Pick a scenario and seed below to generate the exact command. The live HF Space exposes the full OpenEnv API — any agent can step through a race episode with three HTTP calls.</p>
+
+    <!-- Interactive scenario picker -->
+    <div class="sim-widget" data-reveal>
+      <div class="sim-widget-label">INTERACTIVE SCENARIO LAUNCHER</div>
+      <div class="sim-controls">
+        <div class="sim-field">
+          <label class="sim-field-label" for="sim-scenario">SCENARIO</label>
+          <select id="sim-scenario">
+            <option value="weather_roulette">Weather Roulette (Spa · rain transition)</option>
+            <option value="dry_strategy_sprint">Dry Strategy Sprint (Monza · undercut timing)</option>
+            <option value="late_safety_car">Late Safety Car (Monaco · SC pit window)</option>
+            <option value="championship_decider">Championship Decider (Catalunya · rival coverage)</option>
+            <option value="virtual_safety_car_window">VSC Window (Zandvoort · VSC delta)</option>
+            <option value="tyre_cliff_management">Tyre Cliff (Silverstone · degradation cliff)</option>
+          </select>
+        </div>
+        <div class="sim-field">
+          <label class="sim-field-label" for="sim-seed">SEED</label>
+          <select id="sim-seed">
+            <option value="7">7 — recommended demo</option>
+            <option value="0">0 — baseline</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="42">42</option>
+            <option value="99">99</option>
+          </select>
+        </div>
+        <div class="sim-field">
+          <label class="sim-field-label" for="sim-model">MODEL</label>
+          <select id="sim-model">
+            <option value="heuristic">heuristic (fast, no GPU)</option>
+            <option value="Qwen/Qwen3-0.6B">Qwen3-0.6B (small LLM)</option>
+            <option value="./grpo_v1">grpo_v1 (trained checkpoint)</option>
+          </select>
+        </div>
+        <a id="sim-launch" class="sim-launch-btn" href="/web" target="_blank" rel="noreferrer">▶ Open Playground</a>
+      </div>
+      <div class="sim-cmd-wrap">
+        <div class="sim-cmd-label">LOCAL COMMAND</div>
+        <pre id="sim-cmd" class="sim-cmd-pre">python inference.py --task weather_roulette --seed 7 --verbose</pre>
+        <button class="sim-copy-btn" id="sim-copy" title="Copy command">copy</button>
+      </div>
+      <div class="sim-api-wrap">
+        <div class="sim-cmd-label">HTTP (curl)</div>
+        <pre id="sim-api" class="sim-cmd-pre">curl -X POST https://deltasthic-f1-strategist.hf.space/reset \
+  -H "Content-Type: application/json" \
+  -d '{"task":"weather_roulette","seed":7}'</pre>
+      </div>
+    </div>
 
     <div class="try-grid">
       <div class="try-card" data-reveal>
@@ -268,50 +391,55 @@
 <span class="k">with</span> F1Env.from_env(<span class="s">"Deltasthic/f1-strategist"</span>) <span class="k">as</span> env:
     obs = <span class="k">await</span> env.reset(task=<span class="s">"weather_roulette"</span>)
     <span class="k">while not</span> obs.done:
-        action = my_agent(obs)   <span class="c"># your policy here</span>
+        action = my_agent(obs)
         obs = <span class="k">await</span> env.step(F1Action(message=action))
     <span class="k">print</span>(obs.score)  <span class="c"># 0.0 – 1.0</span></pre>
       </div>
 
       <div class="try-card" data-reveal>
-        <div class="try-card-label">Raw HTTP (curl)</div>
-        <pre class="code-block"><span class="c"># Reset an episode</span>
-curl -X POST https://deltasthic-f1-strategist.hf.space/reset \
-  -H <span class="s">"Content-Type: application/json"</span> \
-  -d <span class="s">'{"task":"weather_roulette","seed":7}'</span>
+        <div class="try-card-label">Available actions (20 commands)</div>
+        <pre class="code-block"><span class="c"># Investigation (reveal hidden state)</span>
+INSPECT_TYRE_DEGRADATION
+CHECK_OPPONENT_STRATEGY &lt;num&gt;
+REQUEST_FORECAST
+ASSESS_UNDERCUT_WINDOW
+INSPECT_FUEL_MARGIN
 
-<span class="c"># Step with an action</span>
-curl -X POST .../step \
-  -d <span class="s">'{"action":"PIT_NOW inter"}'</span>
-
-<span class="c"># Interactive Gradio panel</span>
-open https://deltasthic-f1-strategist.hf.space/web</pre>
+<span class="c"># Strategic decisions</span>
+PIT_NOW &lt;compound&gt;  <span class="c"># soft|medium|hard|inter|wet</span>
+SET_MODE &lt;mode&gt;     <span class="c"># push|conserve|race|defend</span>
+RADIO_DRIVER &lt;msg&gt;
+DEFEND_POSITION
+HOLD_GAP
+DONE</pre>
       </div>
 
       <div class="try-card" data-reveal>
-        <div class="try-card-label">Available scenarios</div>
-        <pre class="code-block"><span class="c"># 6 task families, 25+ circuits</span>
-tasks = [
-    <span class="s">"dry_strategy_sprint"</span>,     <span class="c"># undercut timing</span>
-    <span class="s">"weather_roulette"</span>,        <span class="c"># rain transition</span>
-    <span class="s">"late_safety_car"</span>,         <span class="c"># SC pit window</span>
-    <span class="s">"championship_decider"</span>,    <span class="c"># rival coverage</span>
-    <span class="s">"virtual_safety_car_window"</span>, <span class="c"># VSC delta</span>
-    <span class="s">"tyre_cliff_management"</span>,   <span class="c"># degradation cliff</span>
-]</pre>
+        <div class="try-card-label">Observation schema (each step)</div>
+        <pre class="code-block"><span class="c"># What the agent sees per lap</span>
+{
+  <span class="s">"lap"</span>: 7,
+  <span class="s">"total_laps"</span>: 12,
+  <span class="s">"position"</span>: 3,
+  <span class="s">"tyre_compound"</span>: <span class="s">"medium"</span>,
+  <span class="s">"tyre_age"</span>: 6,       <span class="c"># laps on current set</span>
+  <span class="s">"fuel_load"</span>: 0.42,   <span class="c"># 0–1</span>
+  <span class="s">"weather"</span>: <span class="s">"light_rain"</span>,
+  <span class="s">"message"</span>: <span class="s">"&lt;system prompt + history&gt;"</span>
+}</pre>
       </div>
     </div>
 
     <div class="links-row" data-reveal>
-      <a class="link-btn" href="/web">▶ Live Playground</a>
-      <a class="link-btn link-btn--ghost" href="https://github.com/Deltasthicc/F1_Simulator_OpenENV" target="_blank">⎋ GitHub</a>
-      <a class="link-btn link-btn--ghost" href="/health">⚡ API Health</a>
-      <a class="link-btn link-btn--ghost" href="https://huggingface.co/Deltasthic/f1-strategist-qwen3-4b-grpo" target="_blank">⬇ Model Weights</a>
+      <a class="link-btn" href="/web" target="_blank" rel="noreferrer">▶ Live Playground</a>
+      <a class="link-btn link-btn--ghost" href="https://github.com/Deltasthicc/F1_Simulator_OpenENV" target="_blank" rel="noreferrer">⎋ GitHub</a>
+      <a class="link-btn link-btn--ghost" href="/health" target="_blank" rel="noreferrer">⚡ API Health</a>
+      <a class="link-btn link-btn--ghost" href="https://colab.research.google.com/github/Deltasthicc/F1_Simulator_OpenENV/blob/main/notebooks/f1_strategist_training_colab.ipynb" target="_blank" rel="noreferrer">📓 Colab</a>
     </div>
   </div>
 </section>
 
-<!-- ═══════════ SECTION 6 — TEAM ═══════════ -->
+<!-- ═══════════ SECTION 7 — TEAM ═══════════ -->
 <section id="team" class="screen-half screen-dark">
   <div class="section-inner section-inner--center">
     <p class="section-label">TEAM</p>
@@ -335,6 +463,8 @@ tasks = [
       <a href="https://huggingface.co/Deltasthic" target="_blank" class="org-link">HF · Deltasthic</a>
       <span class="dot">·</span>
       <a href="https://github.com/Deltasthicc" target="_blank" class="org-link">GitHub · Deltasthicc</a>
+      <span class="dot">·</span>
+      <a href="https://colab.research.google.com/github/Deltasthicc/F1_Simulator_OpenENV/blob/main/notebooks/f1_strategist_training_colab.ipynb" target="_blank" class="org-link">Colab Notebook</a>
     </div>
 
     <div class="footer-strip">

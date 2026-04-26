@@ -28,9 +28,31 @@ models:
 **OpenEnv environment for training LLM agents as Formula 1 race strategists.**
 
 > **Try it live:**
-> [`f1.chinnaboina.com`](https://f1.chinnaboina.com/) — landing page + interactive panel
-> · [`Hugging Face Space`](https://huggingface.co/spaces/Deltasthic/f1-strategist) — same env on HF infra
-> · [`GitHub`](https://github.com/Deltasthicc/F1_Simulator_OpenENV) — source
+> [`HF Space`](https://huggingface.co/spaces/Deltasthic/f1-strategist) — landing page + interactive Gradio panel
+> · [`f1.chinnaboina.com`](https://f1.chinnaboina.com/) — live deployment
+> · [`GitHub`](https://github.com/Deltasthicc/F1_Simulator_OpenENV) — full source
+
+## Judge quick-links
+
+| Resource | Link |
+|---|---|
+| HF Space (live environment) | [Deltasthic/f1-strategist](https://huggingface.co/spaces/Deltasthic/f1-strategist) |
+| Interactive Gradio playground | [/web](https://huggingface.co/spaces/Deltasthic/f1-strategist) → click **Interactive** |
+| Blog post (writeup) | [blog.md](https://huggingface.co/spaces/Deltasthic/f1-strategist/blob/main/blog.md) |
+| Training notebook (Colab) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Deltasthicc/F1_Simulator_OpenENV/blob/main/notebooks/f1_strategist_training_colab.ipynb) |
+| Demo video | [YouTube — link in demo-assets/youtube-link.txt](demo-assets/youtube-link.txt) |
+| Model weights (LoRA) | [Deltasthic/f1-strategist-qwen3-4b-grpo](https://huggingface.co/Deltasthic) |
+| GitHub | [Deltasthicc/F1\_Simulator\_OpenENV](https://github.com/Deltasthicc/F1_Simulator_OpenENV) |
+
+## Training evidence
+
+Real run results — RTX 5090, 800 steps, Qwen3-4B LoRA.
+
+![Eval curve — before vs after GRPO across 6 scenario families](https://raw.githubusercontent.com/Deltasthicc/F1_Simulator_OpenENV/main/results/eval_curve.png)
+
+![GRPO training reward curve — 800 steps, peak 0.907 @ step 480](https://raw.githubusercontent.com/Deltasthicc/F1_Simulator_OpenENV/main/results/training_loss_curve.png)
+
+![Race story — Weather Roulette Spa, untrained vs trained, position / tyre / score breakdown](https://raw.githubusercontent.com/Deltasthicc/F1_Simulator_OpenENV/main/results/race_story.png)
 
 It is lap 8 of 12 at Spa. Light rain has started. Verstappen ahead of you just stayed out on slicks. Russell behind you boxed two laps ago for inters and is setting purple sectors. Your tyres have 4 laps of grip left. Your pit window closes in 3. The board on the pit wall is asking what to call. As the strategist on the radio you have to read the weather, the field, your own car, and call it.
 

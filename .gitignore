@@ -93,3 +93,7 @@ train.py.broken_*
 # Keep final trained GRPO model
 !grpo_v1/
 !grpo_v1/**
+
+# local copied repo / notebook workspace
+notebooks/F1_Simulator_OpenENV/
+

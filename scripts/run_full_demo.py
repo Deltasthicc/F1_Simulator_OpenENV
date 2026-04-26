@@ -78,17 +78,26 @@ def main() -> None:
         ],
     ))
 
-    # 3. Track grid (also runs per-track GIFs unless --no-individual-gifs)
+    # 3. Track grid — expert mode with track-appropriate scenarios
     grid_args = [
         sys.executable, "scripts/render_track_grid.py",
-        "--tracks", *args.tracks,
-        "--task", args.families[0],
-        "--mode", "trained",
+        "--mode", "expert",    # expert gives highest + most varied scores
         "--output", "results/track_grid.png",
     ]
     if args.skip_track_gifs:
         grid_args.append("--no-individual-gifs")
     completed.append(_run_step("[3/5] track grid + per-track GIFs", grid_args))
+
+    # 3b. Race story chart (before/after in a single static PNG)
+    completed.append(_run_step(
+        "[3b/5] race story chart",
+        [
+            sys.executable, "scripts/plot_race_story.py",
+            "--task", "weather_roulette",
+            "--seed", "7",
+            "--output", "results/race_story.png",
+        ],
+    ))
 
     # 4. Before/after comparisons
     if not args.skip_comparisons:

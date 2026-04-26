@@ -79,7 +79,11 @@ def format_obs(obs) -> str:
     alerts = "; ".join(
         a.get("message", a.get("desc", "")) for a in obs.pit_window_alerts + obs.cascade_alerts
     )
+    scenario_msg = (getattr(obs, "message", None) or "").strip()
+    step_hint = (getattr(obs, "hint", None) or "").strip()
     return (
+        f"Briefing: {scenario_msg or 'standard race'}\n"
+        f"Hint: {step_hint or 'none'}\n"
         f"Lap {obs.current_lap}/{obs.total_laps}, phase={obs.race_phase}, status={obs.race_status}\n"
         f"Ego: P{obs.ego_position}, {obs.ego_tyre_compound} age={obs.ego_tyre_age_laps}, "
         f"health={obs.ego_tyre_health_pct:.1f}%, fuel={obs.ego_fuel_remaining_kg:.2f}kg, "

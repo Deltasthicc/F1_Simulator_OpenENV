@@ -7,7 +7,7 @@ sdk: docker
 app_port: 8000
 pinned: true
 license: mit
-short_description: An OpenEnv environment for training LLM race strategists with GRPO
+short_description: LLM race strategist trained with GRPO on F1 strategy
 tags:
   - openenv
   - reinforcement-learning

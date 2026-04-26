@@ -1,3 +1,24 @@
+---
+title: "Teaching an LLM to be an F1 Race Engineer with GRPO"
+thumbnail: https://huggingface.co/spaces/Deltasthic/f1-strategist/resolve/main/results/journey.png
+authors:
+  - user: shashwatrajan
+    guest: true
+  - user: tanish-shitanshu
+    guest: true
+tags:
+  - LLM
+  - RL
+  - GRPO
+  - OpenEnv
+  - F1
+  - long-horizon
+  - hidden-state
+  - hackathon
+  - meta
+  - pytorch
+---
+
 # Teaching an LLM to be an F1 Race Engineer with GRPO
 
 **Authors:** Shashwat Rajan, Tanish Shitanshu
@@ -18,6 +39,8 @@ A real race engineer integrates everything in their head — the *real* weather 
 We wanted to know: can a 4-billion-parameter language model do this? Not in a toy version. The real thing — sparse rewards, long-horizon credit assignment, hidden state, the whole mess.
 
 So we built it. An OpenEnv environment that simulates this exact problem with deterministic Python scoring (zero LLM-as-judge — every reward is a Python check). Then we trained Qwen3-4B end-to-end with GRPO. **The trained model averages 0.618 weighted score across six scenario families** — +0.20 over the untrained baseline, closing about 33% of the gap to a hand-coded expert.
+
+![Training journey from random to expert](https://huggingface.co/spaces/Deltasthic/f1-strategist/resolve/main/results/journey.png)
 
 But honestly, the score isn't the most interesting part of this story. The *journey* is. Because along the way we caught five separate bugs — including one that proved the previously reported "0.79 average" was actually a hand-coded scripted policy, not the model. We almost shipped a fake number. We didn't.
 
@@ -157,6 +180,8 @@ But:
 
 That's where the curve broke. SFT alone hadn't done it. GRPO from cold hadn't done it. SFT *then* GRPO did. Each layer added something the other couldn't.
 
+![GRPO v2 reward curve over 200 steps](https://huggingface.co/spaces/Deltasthic/f1-strategist/resolve/main/results/grpo_v2_reward_curve.png)
+
 (The Unsloth/vLLM bypass was forced, by the way. Unsloth's compiled GRPO trainer assumes TRL ≥ 0.22 — calls a `truncate_with_protected_tokens` function. We were pinned to TRL 0.18.2 because of an unrelated dep chain. Three crashes later, we ripped Unsloth out of the GRPO path entirely. Plain HuggingFace + PEFT. Slower — about 2.5× the wall-clock — but it actually runs.)
 
 ---
@@ -177,7 +202,9 @@ Held-out eval, 6 scenarios × 5 seeds, **real LLM forward pass through the env a
 
 **+0.20 average lift over untrained.** Closes 33% of the random→expert gap.
 
-And the part that genuinely surprised us — on the weather scenario the trained model (0.965) actually edges out the rule-based expert (0.950). Not by much. But real. The model learned to call `REQUEST_FORECAST` early, watch the rain probability cone climb, and time the inter pit one lap before peak. Investigation discipline plus weather reasoning, together. Not memorized. Learned. Rollout transcript is in [`demo-assets/trained-rollout-transcript.txt`](demo-assets/trained-rollout-transcript.txt) if you want to read it.
+![Per-scenario performance breakdown](https://huggingface.co/spaces/Deltasthic/f1-strategist/resolve/main/results/scenario_breakdown.png)
+
+And the part that genuinely surprised us — on the weather scenario the trained model (0.965) actually edges out the rule-based expert (0.950). Not by much. But real. The model learned to call `REQUEST_FORECAST` early, watch the rain probability cone climb, and time the inter pit one lap before peak. Investigation discipline plus weather reasoning, together. Not memorized. Learned.
 
 ### Key decision — Lap 7, Spa, rain peak
 
@@ -185,7 +212,11 @@ The most illustrative side-by-side from those rollouts:
 
 **Untrained Qwen3-4B:** stays out on mediums through lap 7 (ignores the `REQUEST_FORECAST` signal), pits for *softs* at lap 10 (wrong compound in standing water), finishes P6. Score **0.347**.
 
+![Untrained Qwen3-4B at Spa — stays out, finishes P6](https://huggingface.co/spaces/Deltasthic/f1-strategist/resolve/main/demo-assets/untrained-spa.gif)
+
 **GRPO v2 (ours):** calls `REQUEST_FORECAST` at lap 5, `RADIO_DRIVER "box for inters"` at lap 7, `PIT_NOW inter` at lap 8 — one lap before rain peak, correct compound. Finishes P3. Score **0.985**, delta **+0.638**.
+
+![GRPO v2 at Spa — calls forecast, pits one lap before rain peak, finishes P3](https://huggingface.co/spaces/Deltasthic/f1-strategist/resolve/main/demo-assets/trained-spa.gif)
 
 This is not cherry-picked. It is the median outcome across 5 seeds for `weather_roulette`.
 
@@ -250,14 +281,14 @@ There are a *lot* of ways to push this further. Here's where we'd start, ranked 
 Live HF Space exposes the full OpenEnv API:
 
 ```python
-from f1_strategist import F1Action, F1Env
+from openenv import OpenEnvClient
 
-with F1Env.from_env("Deltasthic/f1-strategist") as env:
-    obs = await env.reset(task="weather_roulette", seed=7)
-    while not obs.done:
-        action = my_agent(obs)
-        obs = await env.step(F1Action(message=action))
-    print(obs.score)
+client = OpenEnvClient.from_env("Deltasthic/f1-strategist")
+obs = client.reset(task="weather_roulette", seed=7)
+while not obs.done:
+    action = my_agent(obs)
+    obs = client.step(action)
+print(obs.score)
 ```
 
 Or HTTP directly:

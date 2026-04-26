@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from openenv.core.env_server import create_app
 from pydantic import BaseModel
@@ -108,7 +108,13 @@ if _STATIC_DIR.exists():
         index = _STATIC_DIR / "index.html"
         if index.exists():
             return FileResponse(str(index), media_type="text/html")
-        return {"status": "ok", "name": "F1 Strategist", "see": "/web"}
+        return {"status": "ok", "name": "F1 Strategist", "see": "/"}
+
+    # /web is documented in older OpenEnv tooling as the Gradio panel route.
+    # We expose the same data through the richer landing page, so redirect.
+    @app.get("/web", include_in_schema=False)
+    def _web_redirect():
+        return RedirectResponse(url="/", status_code=302)
 
 # ---------------------------------------------------------------------------
 # /simulate endpoint — runs a full episode with heuristic policy, returns

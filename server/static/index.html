@@ -428,8 +428,54 @@ curl -X POST .../simulate \
   </div>
 </section>
 
+<!-- ═══════════ SECTION — MODEL'S JOURNEY (5-bug iteration story) ═══════════ -->
+<section id="journey" class="screen screen-dark">
+  <div class="section-inner">
+    <p class="section-label">MODEL'S JOURNEY</p>
+    <h2 class="section-title">From 0.32 random to 0.62 trained — and the bugs we caught along the way</h2>
+    <p class="section-sub">We didn't get to the final number on the first try. Five distinct bugs hid the model's true performance — including one that proved the originally-reported 0.79 was a hand-coded scripted policy, not the LLM. The chart below is every iteration we ran. Honest numbers. Real model.</p>
+
+    <figure class="journey-figure" data-reveal>
+      <img src="https://raw.githubusercontent.com/Deltasthicc/F1_Simulator_OpenENV/dev/results/journey.png"
+           alt="Iteration journey: random → untrained → SFT v3 → RFT v1 → GRPO v2 → expert"
+           loading="lazy"
+           style="display:block; max-width:100%; width:920px; height:auto; margin:0 auto; border:1px solid var(--rule); background:#0f0f0f;">
+      <figcaption class="png-caption" style="text-align:center; margin-top:14px;">
+        Average <code>weighted_final</code> across 4–6 scenarios at each stage. Star is our shipping checkpoint.
+      </figcaption>
+    </figure>
+
+    <div class="journey-bugs" data-reveal style="margin-top:36px; display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:20px;">
+      <div class="bug-card" style="border:1px solid var(--rule); padding:18px 20px; background:#0f0f0f;">
+        <div style="font-size:10px; letter-spacing:0.28em; color:var(--red); text-transform:uppercase; margin-bottom:6px;">Bug 1 · The mirage</div>
+        <p style="font-size:13px; line-height:1.55; color:var(--ink); margin:0;">Reported "0.79 trained" was actually a scripted-policy fallback. Verified bit-exact by running the rule policy with no model loaded — std=0.000 across 5 seeds was the smoking gun.</p>
+      </div>
+      <div class="bug-card" style="border:1px solid var(--rule); padding:18px 20px; background:#0f0f0f;">
+        <div style="font-size:10px; letter-spacing:0.28em; color:var(--red); text-transform:uppercase; margin-bottom:6px;">Bug 2 · Thinking-mode trap</div>
+        <p style="font-size:13px; line-height:1.55; color:var(--ink); margin:0;">Qwen3 has reasoning mode on by default. With <code>max_new_tokens=64</code> the model never finished thinking → unparseable rambles → <code>STAY_OUT</code> default every step.</p>
+      </div>
+      <div class="bug-card" style="border:1px solid var(--rule); padding:18px 20px; background:#0f0f0f;">
+        <div style="font-size:10px; letter-spacing:0.28em; color:var(--red); text-transform:uppercase; margin-bottom:6px;">Bug 3 · Format asymmetry</div>
+        <p style="font-size:13px; line-height:1.55; color:var(--ink); margin:0;">Trained with thinking-on, eval'd with thinking-off. The chat-template prefix the model never saw at training tanked the score by another 0.10.</p>
+      </div>
+      <div class="bug-card" style="border:1px solid var(--rule); padding:18px 20px; background:#0f0f0f;">
+        <div style="font-size:10px; letter-spacing:0.28em; color:var(--red); text-transform:uppercase; margin-bottom:6px;">Bug 4 · Scenario blindness</div>
+        <p style="font-size:13px; line-height:1.55; color:var(--ink); margin:0;"><code>format_obs</code> stripped the scenario briefing/hint. The model couldn't tell <code>late_safety_car</code> from <code>dry_strategy_sprint</code> at lap 0 → applied the wrong playbook everywhere.</p>
+      </div>
+      <div class="bug-card" style="border:1px solid var(--rule); padding:18px 20px; background:#0f0f0f;">
+        <div style="font-size:10px; letter-spacing:0.28em; color:var(--red); text-transform:uppercase; margin-bottom:6px;">Bug 5 · GRPO collapse</div>
+        <p style="font-size:13px; line-height:1.55; color:var(--ink); margin:0;">Cold GRPO from base Qwen3 hit reward-variance collapse by step 200. Fix: SFT warm-start <em>first</em>, then GRPO. Each layer added what the other couldn't — the breakthrough.</p>
+      </div>
+    </div>
+
+    <div data-reveal style="margin-top:32px; text-align:center; font-size:13px; color:var(--dim);">
+      Full writeup with code: <a href="/blog" target="_blank" style="color:var(--red);">blog.md</a> · iteration data: <a href="https://github.com/Deltasthicc/F1_Simulator_OpenENV/tree/dev/results" target="_blank" style="color:var(--red);">results/</a>
+    </div>
+  </div>
+</section>
+
 <!-- ═══════════ SECTION 5 — MEDIA / BLOG / VIDEO ═══════════ -->
-<section id="media" class="screen screen-dark">
+<section id="media" class="screen">
   <div class="section-inner">
     <p class="section-label">MATERIALS</p>
     <h2 class="section-title">Blog, notebook &amp; demo video</h2>
@@ -475,52 +521,6 @@ curl -X POST .../simulate \
         <p class="media-card-desc">Full environment smoke test, SFT warm-start, GRPO training with TRL + Unsloth, evaluation, and result plots. Verified runnable on T4/A100.</p>
         <a class="media-btn" href="https://colab.research.google.com/github/Deltasthicc/F1_Simulator_OpenENV/blob/main/notebooks/f1_strategist_training_colab.ipynb" target="_blank" rel="noreferrer">Open in Colab →</a>
       </div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════ SECTION — MODEL'S JOURNEY (5-bug iteration story) ═══════════ -->
-<section id="journey" class="screen">
-  <div class="section-inner">
-    <p class="section-label">MODEL'S JOURNEY</p>
-    <h2 class="section-title">From 0.32 random to 0.62 trained — and the bugs we caught along the way</h2>
-    <p class="section-sub">We didn't get to the final number on the first try. Five distinct bugs hid the model's true performance — including one that proved the originally-reported 0.79 was a hand-coded scripted policy, not the LLM. The chart below is every iteration we ran. Honest numbers. Real model.</p>
-
-    <figure class="journey-figure" data-reveal>
-      <img src="https://raw.githubusercontent.com/Deltasthicc/F1_Simulator_OpenENV/dev/results/journey.png"
-           alt="Iteration journey: random → untrained → SFT v3 → RFT v1 → GRPO v2 → expert"
-           loading="lazy"
-           style="display:block; max-width:100%; width:920px; height:auto; margin:0 auto; border:1px solid var(--rule); background:#0f0f0f;">
-      <figcaption class="png-caption" style="text-align:center; margin-top:14px;">
-        Average <code>weighted_final</code> across 4–6 scenarios at each stage. Star is our shipping checkpoint.
-      </figcaption>
-    </figure>
-
-    <div class="journey-bugs" data-reveal style="margin-top:36px; display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:20px;">
-      <div class="bug-card" style="border:1px solid var(--rule); padding:18px 20px; background:#0f0f0f;">
-        <div style="font-size:10px; letter-spacing:0.28em; color:var(--red); text-transform:uppercase; margin-bottom:6px;">Bug 1 · The mirage</div>
-        <p style="font-size:13px; line-height:1.55; color:var(--ink); margin:0;">Reported "0.79 trained" was actually a scripted-policy fallback. Verified bit-exact by running the rule policy with no model loaded — std=0.000 across 5 seeds was the smoking gun.</p>
-      </div>
-      <div class="bug-card" style="border:1px solid var(--rule); padding:18px 20px; background:#0f0f0f;">
-        <div style="font-size:10px; letter-spacing:0.28em; color:var(--red); text-transform:uppercase; margin-bottom:6px;">Bug 2 · Thinking-mode trap</div>
-        <p style="font-size:13px; line-height:1.55; color:var(--ink); margin:0;">Qwen3 has reasoning mode on by default. With <code>max_new_tokens=64</code> the model never finished thinking → unparseable rambles → <code>STAY_OUT</code> default every step.</p>
-      </div>
-      <div class="bug-card" style="border:1px solid var(--rule); padding:18px 20px; background:#0f0f0f;">
-        <div style="font-size:10px; letter-spacing:0.28em; color:var(--red); text-transform:uppercase; margin-bottom:6px;">Bug 3 · Format asymmetry</div>
-        <p style="font-size:13px; line-height:1.55; color:var(--ink); margin:0;">Trained with thinking-on, eval'd with thinking-off. The chat-template prefix the model never saw at training tanked the score by another 0.10.</p>
-      </div>
-      <div class="bug-card" style="border:1px solid var(--rule); padding:18px 20px; background:#0f0f0f;">
-        <div style="font-size:10px; letter-spacing:0.28em; color:var(--red); text-transform:uppercase; margin-bottom:6px;">Bug 4 · Scenario blindness</div>
-        <p style="font-size:13px; line-height:1.55; color:var(--ink); margin:0;"><code>format_obs</code> stripped the scenario briefing/hint. The model couldn't tell <code>late_safety_car</code> from <code>dry_strategy_sprint</code> at lap 0 → applied the wrong playbook everywhere.</p>
-      </div>
-      <div class="bug-card" style="border:1px solid var(--rule); padding:18px 20px; background:#0f0f0f;">
-        <div style="font-size:10px; letter-spacing:0.28em; color:var(--red); text-transform:uppercase; margin-bottom:6px;">Bug 5 · GRPO collapse</div>
-        <p style="font-size:13px; line-height:1.55; color:var(--ink); margin:0;">Cold GRPO from base Qwen3 hit reward-variance collapse by step 200. Fix: SFT warm-start <em>first</em>, then GRPO. Each layer added what the other couldn't — the breakthrough.</p>
-      </div>
-    </div>
-
-    <div data-reveal style="margin-top:32px; text-align:center; font-size:13px; color:var(--dim);">
-      Full writeup with code: <a href="/blog" target="_blank" style="color:var(--red);">blog.md</a> · iteration data: <a href="https://github.com/Deltasthicc/F1_Simulator_OpenENV/tree/dev/results" target="_blank" style="color:var(--red);">results/</a>
     </div>
   </div>
 </section>

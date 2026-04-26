@@ -269,21 +269,63 @@ def simulate_episode(req: SimulateRequest) -> dict[str, Any]:
 
 @app.get("/readme", include_in_schema=False)
 def get_readme() -> Response:
-    readme = Path(__file__).parent.parent / "README.md"
-    if readme.exists():
-        raw = readme.read_text(encoding="utf-8")
-        # Strip HF Space YAML frontmatter (--- ... ---) before serving so the
-        # OpenEnv playground sidebar renders clean markdown instead of raw YAML.
-        if raw.startswith("---"):
-            end = raw.find("\n---", 3)
-            if end != -1:
-                raw = raw[end + 4:].lstrip("\n")
-        return Response(content=raw, media_type="text/markdown")
+    # Try multiple locations — /app/README.md (Docker), then relative to this file
+    candidates = [
+        Path("/app/README.md"),
+        Path(__file__).parent.parent / "README.md",
+        Path(__file__).parent / "README.md",
+        Path.cwd() / "README.md",
+    ]
+    for readme in candidates:
+        if readme.exists():
+            raw = readme.read_text(encoding="utf-8")
+            # Strip HF Space YAML frontmatter so playground sidebar renders clean markdown
+            if raw.startswith("---"):
+                end = raw.find("\n---", 3)
+                if end != -1:
+                    raw = raw[end + 4:].lstrip("\n")
+            return Response(content=raw, media_type="text/markdown")
+    # Absolute fallback: minimal inline content
     return Response(
-        content="# F1 Strategist\nLLM race strategy environment. "
-                "See [GitHub](https://github.com/Deltasthicc/F1_Simulator_OpenENV).",
+        content=_README_INLINE,
         media_type="text/markdown",
     )
+
+
+_README_INLINE = """# F1 Strategist
+
+**OpenEnv environment for training LLM agents as Formula 1 race strategists.**
+
+## Quick links
+
+- [HF Space (live environment)](https://huggingface.co/spaces/Deltasthic/f1-strategist)
+- [Blog post](https://huggingface.co/spaces/Deltasthic/f1-strategist/blob/main/blog.md)
+- [Training notebook (Colab)](https://colab.research.google.com/github/Deltasthicc/F1_Simulator_OpenENV/blob/main/notebooks/f1_strategist_training_colab.ipynb)
+- [Model weights (LoRA)](https://huggingface.co/Deltasthic/f1-strategist-qwen3-4b-grpo)
+- [GitHub](https://github.com/Deltasthicc/F1_Simulator_OpenENV)
+
+## Environment API
+
+```
+POST /reset  {"task": "weather_roulette", "seed": 7}
+POST /step   {"message": "REQUEST_FORECAST"}
+GET  /health
+GET  /simulate  (pre-computed results for all 4 models × 6 scenarios × 5 seeds)
+```
+
+## Scenarios
+
+- **Dry Strategy Sprint** (Monza, 10 laps) — one-stop window, opponent undercut timing
+- **Weather Roulette** (Spa, 12 laps) — inter pit call under probability-cone forecast
+- **Late Safety Car** (Melbourne, 13 laps) — pit-window decision under SC deployment
+- **Championship Decider** (Catalunya, 15 laps) — tyre crossover + rival defence
+
+## Trained model
+
+GRPO on Qwen3-4B, 800 steps, RTX 5090. Weather roulette: **0.97** trained vs **0.41** untrained.
+
+**Authors:** Shashwat Rajan, Tanish Shitanshu — Meta PyTorch OpenEnv Hackathon Grand Finale, Bangalore 2026.
+"""
 
 
 # ---------------------------------------------------------------------------

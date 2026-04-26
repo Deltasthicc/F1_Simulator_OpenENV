@@ -171,18 +171,21 @@ def simulate_episode(req: SimulateRequest) -> dict[str, Any]:
                     policy_name = "grpo_v1 (heuristic reference)"
 
         elif policy_name in ("qwen3", "qwen3-0.6b", "llm"):
-            # Qwen3-0.6B is pre-cached in the Docker image — loads in seconds.
+            # Qwen3-0.6B is pre-cached in the Docker image — load from disk only,
+            # never contact HF Hub (avoids rate-limit / auth hangs on cold start).
             try:
                 import torch
                 from transformers import AutoModelForCausalLM, AutoTokenizer
                 _model_id = "Qwen/Qwen3-0.6B"
+                # local_files_only=True: never ping HF Hub, load purely from cache
                 _tok = AutoTokenizer.from_pretrained(
-                    _model_id, trust_remote_code=True)
+                    _model_id, trust_remote_code=True, local_files_only=True)
                 _lm = AutoModelForCausalLM.from_pretrained(
                     _model_id,
-                    torch_dtype=torch.float16,
+                    dtype=torch.float16,
                     low_cpu_mem_usage=True,
                     trust_remote_code=True,
+                    local_files_only=True,
                 )
                 _lm.eval()
 

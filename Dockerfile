@@ -49,7 +49,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 print("Pre-caching Qwen/Qwen3-0.6B ...")
 AutoTokenizer.from_pretrained("Qwen/Qwen3-0.6B", trust_remote_code=True)
 m = AutoModelForCausalLM.from_pretrained(
-    "Qwen/Qwen3-0.6B", torch_dtype=torch.float16, low_cpu_mem_usage=True, trust_remote_code=True)
+    "Qwen/Qwen3-0.6B", dtype=torch.float16, low_cpu_mem_usage=True, trust_remote_code=True)
 del m
 print("Qwen/Qwen3-0.6B cached OK")
 PYEOF
